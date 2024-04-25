@@ -26,14 +26,14 @@ impl Section {
       },
       Section::TypeSection => {
           println!("TypeSection");
-          File::create("type_section").unwrap().write_all(section_data).unwrap();
+          File::create("type.section").unwrap().write_all(section_data).unwrap();
       },
       Section::ImportSection => {
           println!("ImportSection");
       },
       Section::FunctionSection => {
           println!("FunctionSection");
-          File::create("function_section").unwrap().write_all(section_data).unwrap();
+          File::create("function.section").unwrap().write_all(section_data).unwrap();
       },
       Section::TableSection => {
           println!("TableSection");
@@ -46,7 +46,7 @@ impl Section {
       },
       Section::ExportSection => {
           println!("ExportSection");
-          File::create("export_section").unwrap().write_all(section_data).unwrap();
+          File::create("export.section").unwrap().write_all(section_data).unwrap();
       },
       Section::StartSection => {
           println!("StartSection");
@@ -56,7 +56,7 @@ impl Section {
       },
       Section::CodeSection => {
           println!("CodeSection");
-          File::create("code_section").unwrap().write_all(section_data).unwrap();
+          File::create("code.section").unwrap().write_all(section_data).unwrap();
           let (_, codes) = Code::parse(section_data).unwrap();
           codes.iter().enumerate().for_each(|(i, code)| {
             println!("Function #{}: size: {}", i, code.size);
