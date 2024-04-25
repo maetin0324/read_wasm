@@ -41,6 +41,8 @@ fn main() {
     }
 }
 
+// セクションパース部分nomで書き直せそうだが、気合で書いて愛着があるので一旦このまま
+
 fn read_u32_from_leb128<T: Read>(reader: &mut BufReader<T>) -> u32 {
     let mut acc: u32 = 0;
     let mut count: u8 = 0;

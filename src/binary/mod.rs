@@ -1,2 +1,4 @@
 pub mod section;
-pub mod code;
+pub mod code_sec;
+pub mod type_sec;
+pub mod instructions;

@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::io::Write;
-use super::code::Code;
+use super::code_sec::Code;
 
 pub enum Section {
   CustomSection,
@@ -60,6 +60,9 @@ impl Section {
           let (_, codes) = Code::parse(section_data).unwrap();
           codes.iter().enumerate().for_each(|(i, code)| {
             println!("Function #{}: size: {}", i, code.size);
+            code.code.iter().for_each(|instr| {
+              println!("{:?}", instr);
+            });
           });
       },
       Section::DataSection => {

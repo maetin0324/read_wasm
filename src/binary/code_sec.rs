@@ -1,14 +1,14 @@
 use nom::{
-  IResult,
-  // bytes::complete::tag, 
-  bytes::complete::take
+  bytes::complete::{take, take_till, tag},
+  IResult
 };
 use nom_leb128::leb128_u32;
+use super::instructions::Instructions;
 
 pub struct Code {
   pub size: u32,
   // pub locals: Vec<LocalVar>,
-  // code: Vec<u8>,
+  pub code: Vec<Instructions>,
 }
 
 pub struct LocalVar {
@@ -24,13 +24,16 @@ impl Code {
     for _ in 0..func_count {
       let size: u32;
       let local_decls: u32;
-      let instrs: &[u8];
+      let instrs_bytes: &[u8];
       (input, size) = leb128_u32(input)?;
       (input, local_decls) = leb128_u32(input)?;
-      (input, _) = take(local_decls)(input)?;
-      (input, instrs) = take(size - local_decls)(input)?;
+      (input, _) = take(local_decls*2)(input)?;
+      (input, instrs_bytes) = take_till(|c| c == 0x0b)(input)?;
+      (input, _) = tag([0x0b])(input)?;
+      let (_, instrs) = Instructions::parse(instrs_bytes)?;
 
-      codes.push(Code { size });
+
+      codes.push(Code { size: size, code: instrs});
     }
 
     Ok((input, codes))
