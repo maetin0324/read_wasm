@@ -2,6 +2,9 @@ use std::fs::File;
 use std::io::{BufReader, Read};
 use clap::Parser;
 use read_wasm::binary::section::Section;
+use read_wasm::binary::wasm::Wasm;
+use read_wasm::exec::exec_machine::ExecMachine;
+use read_wasm::exec::value::Value;
 
 #[derive(Parser, Debug)]
 struct Cli {
@@ -28,6 +31,12 @@ fn main() {
         panic!("Version number is not correct");
     }
 
+    let mut wasm = Wasm{
+        type_section: None,
+        export_section: None,
+        code_section: None,
+    };
+
     loop {
         let (section_id, section_size) = read_section_id_and_size(&mut reader);
         if section_id == 0 && section_size == 0 {
@@ -37,8 +46,25 @@ fn main() {
         let mut section_data = vec![0u8; section_size as usize];
         reader.read_exact(&mut section_data).unwrap();
 
-        Section::match_section(section_id, &section_data)
+        let section = Section::match_section(section_id, &section_data);
+        match section {
+            Section::TypeSection(func_types) => {
+                wasm.type_section = Some(func_types);
+            },
+            Section::ExportSection(export_funcs) => {
+                wasm.export_section = Some(export_funcs);
+            },
+            Section::CodeSection(codes) => {
+                wasm.code_section = Some(codes);
+            },
+            _ => {},
+        }
     }
+    println!("{:?}", wasm);
+
+    let mut machine = ExecMachine::new();
+    machine.exec(&wasm, "_start", vec![Value::I64(1), Value::I64(2)]);
+    println!("stack top {:?}", machine.stack.last());
 }
 
 // セクションパース部分nomで書き直せそうだが、気合で書いて愛着があるので一旦このまま

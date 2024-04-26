@@ -4,14 +4,15 @@ use nom::{
   number::complete::le_u8, IResult,
 };
 
-use nom_leb128::{leb128_i32, leb128_i64};
+use nom_leb128::{leb128_i32, leb128_i64, leb128_u32};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Instructions {
   I32Const(i32),
   I64Const(i64),
   I32Add,
   I64Add,
+  LocalGet(u32),
 }
 
 impl Instructions {
@@ -43,6 +44,10 @@ impl Instructions {
       },
       0x6a => Ok((input, Instructions::I32Add)),
       0x7c => Ok((input, Instructions::I64Add)),
+      0x20 => {
+        let (input, val) = leb128_u32(input)?;
+        Ok((input, Instructions::LocalGet(val)))
+      },
       _ => {
         panic!("Unknown opcode: {:#x?}", opcode);
       }
