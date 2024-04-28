@@ -60,3 +60,13 @@ impl Code {
   }
 }
 
+impl LocalVar {
+  pub fn to_value_type_vec(&self) -> Vec<ValueType> {
+    let mut vec = Vec::new();
+    for _ in 0..self.count {
+      vec.push(self.value_type.clone());
+    }
+    vec
+  }
+}
+

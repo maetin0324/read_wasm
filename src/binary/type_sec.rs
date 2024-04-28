@@ -6,7 +6,7 @@ use nom_leb128::leb128_u32;
 
 use super::value_type::ValueType;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct FuncType {
   pub param_types: Vec<ValueType>,
   pub return_types: Vec<ValueType>,

@@ -1,3 +1,6 @@
+use nom::IResult;
+use nom_leb128::leb128_u32;
+
 
 #[derive(Debug, PartialEq)]
 pub struct Func {
@@ -10,7 +13,8 @@ impl Func {
     let mut funcs: Vec<Func> = Vec::new();
 
     for _ in 0..func_count {
-      let (input, type_idx) = leb128_u32(input)?;
+      let type_idx: u32;
+      (input, type_idx) = leb128_u32(input)?;
 
       funcs.push(Func { type_idx });
     }

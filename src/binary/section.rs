@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::Write;
 use super::type_sec::FuncType;
+use super::func_sec::Func;
 use super::export_sec::ExportFunc;
 use super::code_sec::Code;
 
@@ -10,7 +11,7 @@ pub enum Section {
   CustomSection,
   TypeSection(Vec<FuncType>),
   ImportSection,
-  FunctionSection,
+  FunctionSection(Vec<Func>),
   TableSection,
   MemorySection,
   GlobalSection,
@@ -47,7 +48,11 @@ impl Section {
       3 => {
         println!("FunctionSection");
         File::create("function.section").unwrap().write_all(section_data).unwrap();
-        Section::FunctionSection
+        let funcs = match Func::parse(section_data) {
+          Ok((_, funcs)) => funcs,
+          Err(e) => panic!("Error: {:#x?}", e),
+        };
+        Section::FunctionSection(funcs)
       },
       4 => {
         println!("TableSection");

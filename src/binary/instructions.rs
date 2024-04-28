@@ -8,6 +8,11 @@ use nom_leb128::{leb128_i32, leb128_i64, leb128_u32};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Instructions {
+  Unreachable,
+  Nop,
+  Block(Vec<Instructions>),
+  Loop(Vec<Instructions>),
+  Drop,
   I32Const(i32),
   I64Const(i64),
   I32Add,
@@ -34,6 +39,13 @@ impl Instructions {
     let (input, opcode) = le_u8(input)?;
 
     match opcode {
+      0x00 => Ok((input, Instructions::Unreachable)),
+      0x01 => Ok((input, Instructions::Nop)),
+      // 0x02 => {
+      //   let (input, instrs) = Instructions::parse(input)?;
+      //   Ok((input, Instructions::Block(instrs)))
+      // },
+      0x1a => Ok((input, Instructions::Drop)),
       0x41 => {
         let (input, val) = leb128_i32(input)?;
         Ok((input, Instructions::I32Const(val)))
