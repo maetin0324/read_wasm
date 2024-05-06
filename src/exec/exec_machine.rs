@@ -59,7 +59,7 @@ impl ExecMachine {
           }
           let called_func = FuncInstance::call(*idx, &self.func_instances, args);
           func.pc += 1;
-          call_stack.push(func.clone());
+          call_stack.push(func);
           call_stack.push(called_func);
           println!("Call: call_stack: {:?}", call_stack);
           self.call_stack = call_stack;
@@ -102,7 +102,7 @@ impl ExecMachine {
         _ => panic!("Unknown instruction: {:?}", instr),
       }
       func.pc += 1;
-      call_stack.push(func.clone());
+      call_stack.push(func);
       self.call_stack = call_stack;
     }
     self
