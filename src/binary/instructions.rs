@@ -12,6 +12,8 @@ pub enum Instructions {
   Nop,
   Block(Vec<Instructions>),
   Loop(Vec<Instructions>),
+  Return,
+  Call(u32),
   Drop,
   I32Const(i32),
   I64Const(i64),
@@ -45,6 +47,11 @@ impl Instructions {
       //   let (input, instrs) = Instructions::parse(input)?;
       //   Ok((input, Instructions::Block(instrs)))
       // },
+      0x0f => Ok((input, Instructions::Return)),
+      0x10 => {
+        let (input, func_idx) = leb128_u32(input)?;
+        Ok((input, Instructions::Call(func_idx)))
+      }
       0x1a => Ok((input, Instructions::Drop)),
       0x41 => {
         let (input, val) = leb128_i32(input)?;

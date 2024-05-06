@@ -82,4 +82,12 @@ impl FuncInstance {
     } as u32;
     FuncInstance::call(func_idx, func_instances, args)
   }
+
+  pub fn validate_locals_type(&self) -> bool {
+    if self.locals.len() > self.locals_len as usize {
+      false
+    } else {
+    self.locals.iter().zip(self.locals_types.iter()).all(|(l, t)| l.eq_for_value_type(t))
+    }
+  }
 }

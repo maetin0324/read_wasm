@@ -8,9 +8,6 @@ pub struct ExecMachine {
   pub value_stack: Vec<Value>,
   pub call_stack: Vec<FuncInstance>,
   pub func_instances: Vec<FuncInstance>,
-  pub locals: Vec<Value>,
-  pub instrs: Vec<Instructions>,
-  pub pc: usize,
 }
 
 impl ExecMachine {
@@ -19,9 +16,6 @@ impl ExecMachine {
       value_stack: Vec::new(),
       call_stack: Vec::new(),
       func_instances: Vec::new(),
-      locals: Vec::new(),
-      instrs: Vec::new(),
-      pc: 0,
     }
   }
 
@@ -34,24 +28,43 @@ impl ExecMachine {
 
   pub fn run(&mut self)  -> &ExecMachine {
     loop {
-      let func = match self.call_stack.last_mut() {
+      let mut call_stack = std::mem::take(&mut self.call_stack);
+      let mut func = match call_stack.pop() {
         Some(f) => f,
         None => break,
       };
 
-      let Some(instr) = func.instrs.get(self.pc) else {
-        self.call_stack.pop();
+      let Some(instr) = func.instrs.get(func.pc) else {
+        self.call_stack = call_stack;
         continue;
       };
-
-      println!("func: {:?}, instr: {:?}", func, instr);
 
       match instr {
         Instructions::Nop => {},
         Instructions::Unreachable => {
-          println!{"call_stack: {:?}", self.call_stack};
+          println!{"call_stack: {:?}", call_stack};
           panic!("Unreachable");
         },
+        Instructions::Call(idx) => {
+          let callee = match self.func_instances.get(*idx as usize) {
+            Some(f) => f,
+            None => panic!("Call: idx {} not found", idx),
+          };
+          let mut args = Vec::new();
+          for _ in 0..callee.locals_len {
+            match self.value_stack.pop() {
+              Some(v) => args.insert(0, v),
+              None => panic!("Call: value_stack has no enough values"),
+            }
+          }
+          let called_func = FuncInstance::call(*idx, &self.func_instances, args);
+          func.pc += 1;
+          call_stack.push(func.clone());
+          call_stack.push(called_func);
+          println!("Call: call_stack: {:?}", call_stack);
+          self.call_stack = call_stack;
+          continue;
+        }
         Instructions::Drop => {
           self.value_stack.pop();
         },
@@ -88,7 +101,9 @@ impl ExecMachine {
         },
         _ => panic!("Unknown instruction: {:?}", instr),
       }
-      self.pc += 1;
+      func.pc += 1;
+      call_stack.push(func.clone());
+      self.call_stack = call_stack;
     }
     self
   }
