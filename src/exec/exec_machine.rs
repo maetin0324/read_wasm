@@ -61,7 +61,6 @@ impl ExecMachine {
           func.pc += 1;
           call_stack.push(func);
           call_stack.push(called_func);
-          println!("Call: call_stack: {:?}", call_stack);
           self.call_stack = call_stack;
           continue;
         }
