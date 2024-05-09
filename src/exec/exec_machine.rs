@@ -28,21 +28,19 @@ impl ExecMachine {
 
   pub fn run(&mut self)  -> &ExecMachine {
     loop {
-      let mut call_stack = std::mem::take(&mut self.call_stack);
-      let mut func = match call_stack.pop() {
+      let mut func = match self.call_stack.pop() {
         Some(f) => f,
         None => break,
       };
 
       let Some(instr) = func.instrs.get(func.pc) else {
-        self.call_stack = call_stack;
         continue;
       };
 
       match instr {
         Instructions::Nop => {},
         Instructions::Unreachable => {
-          println!{"call_stack: {:?}", call_stack};
+          println!{"call_stack: {:?}", self.call_stack};
           panic!("Unreachable");
         },
         Instructions::Call(idx) => {
@@ -59,9 +57,8 @@ impl ExecMachine {
           }
           let called_func = FuncInstance::call(*idx, &self.func_instances, args);
           func.pc += 1;
-          call_stack.push(func);
-          call_stack.push(called_func);
-          self.call_stack = call_stack;
+          self.call_stack.push(func);
+          self.call_stack.push(called_func);
           continue;
         }
         Instructions::Drop => {
@@ -101,8 +98,7 @@ impl ExecMachine {
         _ => panic!("Unknown instruction: {:?}", instr),
       }
       func.pc += 1;
-      call_stack.push(func);
-      self.call_stack = call_stack;
+      self.call_stack.push(func);
     }
     self
   }
