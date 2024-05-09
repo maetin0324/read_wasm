@@ -3,11 +3,17 @@ use crate::binary::instructions::Instructions;
 use super::value::Value;
 use super::func_instance::FuncInstance;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ExecMachine {
   pub value_stack: Vec<Value>,
   pub call_stack: Vec<FuncInstance>,
   pub func_instances: Vec<FuncInstance>,
+}
+
+#[derive(Debug)]
+pub struct TrapError {
+  pub message: String,
+  pub vm: ExecMachine,
 }
 
 impl ExecMachine {
@@ -19,21 +25,22 @@ impl ExecMachine {
     }
   }
 
-  pub fn exec(&mut self, wasm: Wasm, entry_point:&str, locals: Vec<Value>) -> &ExecMachine {
+  pub fn exec(&mut self, wasm: Wasm, entry_point:&str, locals: Vec<Value>) -> Result<&ExecMachine, TrapError> {
     let func_instances = FuncInstance::new(wasm);
     self.call_stack.push(FuncInstance::call_by_name(entry_point, &func_instances, locals));
     self.func_instances = func_instances;
     self.run()
   }
 
-  pub fn run(&mut self)  -> &ExecMachine {
+  pub fn run(&mut self)  -> Result<&ExecMachine, TrapError> {
     loop {
-      let mut func = match self.call_stack.pop() {
+      let func = match self.call_stack.last_mut() {
         Some(f) => f,
         None => break,
       };
 
       let Some(instr) = func.instrs.get(func.pc) else {
+        self.call_stack.pop();
         continue;
       };
 
@@ -41,23 +48,36 @@ impl ExecMachine {
         Instructions::Nop => {},
         Instructions::Unreachable => {
           println!{"call_stack: {:?}", self.call_stack};
-          panic!("Unreachable");
+          return Err(TrapError {
+            message: "Unreachable".to_string(),
+            vm: self.clone(),
+          });
         },
         Instructions::Call(idx) => {
           let callee = match self.func_instances.get(*idx as usize) {
             Some(f) => f,
-            None => panic!("Call: idx {} not found", idx),
+            None => {
+              let message = format!("Call: function {} not found", idx);
+              return Err(TrapError {
+                message: message,
+                vm: self.clone(),
+              });
+            }
           };
           let mut args = Vec::new();
           for _ in 0..callee.locals_len {
             match self.value_stack.pop() {
               Some(v) => args.insert(0, v),
-              None => panic!("Call: value_stack has no enough values"),
+              None => {
+                return Err(TrapError {
+                  message: "Call: value stack underflow".to_string(),
+                  vm: self.clone(),
+                });
+              }
             }
           }
           let called_func = FuncInstance::call(*idx, &self.func_instances, args);
           func.pc += 1;
-          self.call_stack.push(func);
           self.call_stack.push(called_func);
           continue;
         }
@@ -75,7 +95,12 @@ impl ExecMachine {
           let b = self.value_stack.pop().unwrap();
           let ret = match (a, b) {
             (Value::I32(a), Value::I32(b)) => Value::I32(a + b),
-            _ => panic!("Invalid type for I32Add"),
+            _ => {
+              return Err(TrapError {
+                message: "Invalid type for I32Add".to_string(),
+                vm: self.clone(),
+              });
+            }
           };
           self.value_stack.push(ret);
         },
@@ -84,22 +109,32 @@ impl ExecMachine {
           let b = self.value_stack.pop().unwrap();
           let ret = match (a, b) {
             (Value::I64(a), Value::I64(b)) => Value::I64(a + b),
-            _ => panic!("Invalid type for I64Add"),
+            _ => {
+              return Err(TrapError {
+                message: "Invalid type for I64Add".to_string(),
+                vm: self.clone(),
+              });
+            }
           };
           self.value_stack.push(ret);
         },
         Instructions::LocalGet(idx) => {
           let val = match func.locals.get(*idx as usize) {
             Some(v) => v.clone(),
-            None => panic!("LocalGet: idx {} not found", idx),
+            None => {
+              let message = format!("LocalGet: local {} not found", idx);
+              return Err(TrapError {
+                message: message,
+                vm: self.clone(),
+              });
+            }
           };
           self.value_stack.push(val);
         },
         _ => panic!("Unknown instruction: {:?}", instr),
       }
       func.pc += 1;
-      self.call_stack.push(func);
     }
-    self
+    Ok(self)
   }
 }
