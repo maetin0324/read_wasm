@@ -26,14 +26,13 @@ impl ExportFunc {
     for _ in 0..func_count {
       let string_len: u32;
       let name_buf: &[u8];
-      let name: String;
       let desc: ExportDesc;
       let func_idx: u32;
 
       (input, string_len) = leb128_u32(input)?;
       (input, name_buf) = take(string_len)(input)?;
 
-      name = String::from_utf8(name_buf.to_vec()).unwrap();
+      let name = String::from_utf8(name_buf.to_vec()).unwrap();
 
       (input, desc) = ExportDesc::parse(input)?;
       (input, func_idx) = leb128_u32(input)?;

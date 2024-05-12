@@ -1,5 +1,6 @@
 use crate::binary::wasm::Wasm;
-use crate::binary::instructions::Instructions;
+use crate::binary::instructions::{BlockType, Instructions};
+use super::block_frame::BlockFrame;
 use super::value::Value;
 use super::func_instance::FuncInstance;
 
@@ -33,12 +34,7 @@ impl ExecMachine {
   }
 
   pub fn run(&mut self)  -> Result<&ExecMachine, TrapError> {
-    loop {
-      let func = match self.call_stack.last_mut() {
-        Some(f) => f,
-        None => break,
-      };
-
+    while let Some(func) = self.call_stack.last_mut() {
       let Some(instr) = func.instrs.get(func.pc) else {
         self.call_stack.pop();
         continue;
@@ -52,6 +48,50 @@ impl ExecMachine {
             message: "Unreachable".to_string(),
             vm: self.clone(),
           });
+        },
+        Instructions::Block(block) => {
+          let frame = BlockFrame::new(self.value_stack.clone(), block.clone());
+          self.value_stack.clear();
+          func.label_stack.push(frame);
+        },
+        Instructions::End => {
+          let frame = match func.label_stack.pop() {
+            Some(f) => f,
+            None => {
+              return Err(TrapError {
+                message: "End: label stack underflow".to_string(),
+                vm: self.clone(),
+              });
+            }
+          };
+          
+          let ret = match frame.return_type {
+            BlockType::Void => None,
+            BlockType::Value(t) => {
+              match self.value_stack.pop() {
+                Some(v) => {
+                  if v.eq_for_value_type(&t) {
+                    Some(v)
+                  } else {
+                    return Err(TrapError {
+                      message: "End: invalid return type".to_string(),
+                      vm: self.clone(),
+                    });
+                  }
+                }
+                None => {
+                  return Err(TrapError {
+                    message: "End: value stack underflow".to_string(),
+                    vm: self.clone(),
+                  });
+                }
+              }
+            }
+          };
+          self.value_stack = frame.value_stack_evac;
+          if let Some(v) = ret {
+            self.value_stack.push(v);
+          }
         },
         Instructions::Call(idx) => {
           let callee = match self.func_instances.get(*idx as usize) {

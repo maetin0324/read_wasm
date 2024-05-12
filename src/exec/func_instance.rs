@@ -3,6 +3,7 @@ use core::panic;
 use crate::binary::instructions::Instructions;
 use crate::binary::value_type::ValueType;
 use crate::binary::wasm::Wasm;
+use super::block_frame::BlockFrame;
 use super::value::Value;
 
 #[derive(Debug, Clone)]
@@ -14,6 +15,7 @@ pub struct FuncInstance {
   pub locals_len: u32,
   pub instrs: Vec<Instructions>,
   pub pc: usize,
+  pub label_stack: Vec<BlockFrame>,
 }
 
 impl FuncInstance {
@@ -52,6 +54,7 @@ impl FuncInstance {
             locals_len: locals_len,
             instrs: code.instrs.clone(),
             pc: 0,
+            label_stack: Vec::new(),
           });
         }
       },

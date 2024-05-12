@@ -24,7 +24,7 @@ pub enum Section {
 }
 
 impl Section {
-  pub fn match_section(section_id: u8, section_data: &Vec<u8>) -> Section{
+  pub fn match_section(section_id: u8, section_data: &[u8]) -> Section{
     match section_id {
       0 => {
         println!("CustomSection");

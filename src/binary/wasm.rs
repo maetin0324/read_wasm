@@ -79,7 +79,7 @@ fn read_u32_from_leb128<T: Read>(reader: &mut BufReader<T>) -> u32 {
       if let Ok(b) = byte {
           let val: u32 = (b & 0b01111111) as u32;
           let shifted_val = val << (7 * count);
-          acc += shifted_val as u32;
+          acc += shifted_val;
           count += 1;
           if b < 0b10000000 { break; }
       } else {

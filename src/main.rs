@@ -11,6 +11,9 @@ struct Cli {
 
     #[clap(short, long, default_value = "_start")]
     entry_point: String,
+
+    #[clap(short, long)]
+    locals: Vec<u32>,
 }
 
 fn main() {
@@ -20,7 +23,7 @@ fn main() {
     
     let file = File::open(filename).unwrap();
     let wasm = Wasm::new(file);
-    println!("{:?}", wasm);
+    println!("{:#?}", wasm);
 
     let mut machine = ExecMachine::new();
     match machine.exec(wasm, &entry_point, vec![Value::I64(1), Value::I64(2)]) {
