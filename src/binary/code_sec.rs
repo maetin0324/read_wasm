@@ -63,7 +63,7 @@ impl Code {
       }
 
 
-      codes.push(Code { size: size, locals: locals, instrs: instrs });
+      codes.push(Code { size, locals, instrs });
     }
 
     Ok((input, codes))

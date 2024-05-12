@@ -1,4 +1,4 @@
-use crate::binary::instructions::{Block, BlockType, Instructions};
+use crate::binary::instructions::{Block, BlockType};
 
 use super::value::Value;
 
@@ -11,7 +11,7 @@ pub struct BlockFrame {
 impl BlockFrame {
   pub fn new(value_stack_evac: Vec<Value>, block: Block) -> BlockFrame {
     BlockFrame {
-      value_stack_evac: value_stack_evac,
+      value_stack_evac,
       return_type: block.block_type,
     }
   }

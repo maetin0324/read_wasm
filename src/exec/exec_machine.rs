@@ -17,6 +17,12 @@ pub struct TrapError {
   pub vm: ExecMachine,
 }
 
+impl Default for ExecMachine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ExecMachine {
   pub fn new() -> ExecMachine {
     ExecMachine {
@@ -99,7 +105,7 @@ impl ExecMachine {
             None => {
               let message = format!("Call: function {} not found", idx);
               return Err(TrapError {
-                message: message,
+                message,
                 vm: self.clone(),
               });
             }
@@ -164,7 +170,7 @@ impl ExecMachine {
             None => {
               let message = format!("LocalGet: local {} not found", idx);
               return Err(TrapError {
-                message: message,
+                message,
                 vm: self.clone(),
               });
             }

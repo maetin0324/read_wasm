@@ -47,11 +47,11 @@ impl FuncInstance {
           
 
           func_instances.push(FuncInstance {
-            name: name,
-            param_types: param_types,
+            name,
+            param_types,
             locals: Vec::new(),
             locals_types: local_types,
-            locals_len: locals_len,
+            locals_len,
             instrs: code.instrs.clone(),
             pc: 0,
             label_stack: Vec::new(),
