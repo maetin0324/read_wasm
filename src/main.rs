@@ -30,7 +30,7 @@ fn main() {
         Ok(_) => { println!("return {:?}", machine.value_stack.last()); },
         Err(e) => {
             println!("ExecuteError: {:?}", e.message);
-            println!("VM: {:?}", e.vm);
+            println!("VM: {:#?}", e.vm);
         },
     }
 }

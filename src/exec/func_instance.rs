@@ -63,7 +63,7 @@ impl FuncInstance {
     func_instances
   }
 
-  pub fn call(func_idx: u32, func_instances: &Vec<FuncInstance>, args: Vec<Value>) -> FuncInstance {
+  pub fn call(func_idx: u32, func_instances: &[FuncInstance], args: Vec<Value>) -> FuncInstance {
     let mut func_instance = func_instances[func_idx as usize].clone();
     if args.len() == func_instance.param_types.len() {
       if args.iter().zip(&mut func_instance.param_types.iter()).all(|(a, b)| a.eq_for_value_type(b)) {
@@ -77,7 +77,7 @@ impl FuncInstance {
     func_instance
   }
 
-  pub fn call_by_name(name: &str, func_instances: &Vec<FuncInstance>, args: Vec<Value>) -> FuncInstance {
+  pub fn call_by_name(name: &str, func_instances: &[FuncInstance], args: Vec<Value>) -> FuncInstance {
     let func_idx = match func_instances.iter()
       .position(|f| f.name.as_ref().map_or(false, |n| n == name)){
       Some(idx) => idx,

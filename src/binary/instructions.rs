@@ -11,7 +11,7 @@ use super::value_type::ValueType;
 #[derive(Debug, Clone, PartialEq)]
 pub enum BlockType {
   Void,
-  Value(ValueType)
+  Value(ValueType),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -36,6 +36,8 @@ pub enum Instructions {
   I32Add,
   I64Add,
   LocalGet(u32),
+  LocalSet(u32),
+  LocalTee(u32),
 }
 
 impl Instructions {
@@ -95,6 +97,14 @@ impl Instructions {
       0x20 => {
         let (input, val) = leb128_u32(input)?;
         Ok((input, Instructions::LocalGet(val)))
+      },
+      0x21 => {
+        let (input, val) = leb128_u32(input)?;
+        Ok((input, Instructions::LocalSet(val)))
+      },
+      0x22 => {
+        let (input, val) = leb128_u32(input)?;
+        Ok((input, Instructions::LocalTee(val)))
       },
       _ => {
         panic!("Unknown opcode: {:#x?}", opcode);
