@@ -19,6 +19,7 @@ Options:
 返り値は`ExecMachine`の`value_stack`の最後の値となる
 
 # 使用例
+与えられた数nに対して、1からnまでの和を計算する関数をwatで書き、それを実行する例
 ```sh
 rmaeda🌱 ~/workspace/rust/read-wasm on  main [!] is 📦 v0.1.0 via 🦀 v1.76.0
 （▰╹◡╹）❯  cat block.wat
