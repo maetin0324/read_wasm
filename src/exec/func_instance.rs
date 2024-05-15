@@ -11,8 +11,6 @@ pub struct FuncInstance {
   pub name: Option<String>,
   pub param_types: Vec<ValueType>,
   pub locals: Vec<Value>,
-  pub locals_types: Vec<ValueType>,
-  pub locals_len: u32,
   pub instrs: Vec<Instructions>,
   pub pc: usize,
   pub label_stack: Vec<BlockFrame>,
@@ -25,14 +23,11 @@ impl FuncInstance {
     match (wasm.type_section, wasm.function_section, wasm.export_section, wasm.code_section) {
       (Some(types), Some(funcs), Some(exports), Some(codes)) => {
         for (i, (func, code)) in funcs.iter().zip(codes.iter()).enumerate() {
-          let mut locals_len = 0;
 
           let param_types = match types.get(func.type_idx as usize) {
             Some(t) => t.param_types.clone(),
             None => panic!("type_idx {} not found", func.type_idx),
           };
-          locals_len += param_types.len() as u32;
-          locals_len += code.locals.len() as u32;
           let mut local_types = param_types.clone();
           local_types.extend(code.locals.iter().map(|l| l.value_type.clone()).collect::<Vec<ValueType>>());
           let _ = code.locals.iter().map(|l| local_types.extend(l.to_value_type_vec()));
@@ -44,14 +39,15 @@ impl FuncInstance {
               None
             }
           });
+
+          let mut locals = Vec::new();
+          locals.extend(local_types.iter().map(|t| t.to_init_value()));
           
 
           func_instances.push(FuncInstance {
             name,
             param_types,
-            locals: Vec::new(),
-            locals_types: local_types,
-            locals_len,
+            locals,
             instrs: code.instrs.clone(),
             pc: 0,
             label_stack: Vec::new(),
@@ -67,7 +63,9 @@ impl FuncInstance {
     let mut func_instance = func_instances[func_idx as usize].clone();
     if args.len() == func_instance.param_types.len() {
       if args.iter().zip(&mut func_instance.param_types.iter()).all(|(a, b)| a.eq_for_value_type(b)) {
-        func_instance.locals.extend(args);
+        for (i, a) in args.iter().enumerate() {
+          func_instance.locals[i] = a.clone();
+        }
       } else {
         panic!("Invalid args type");
       }
@@ -84,13 +82,5 @@ impl FuncInstance {
       None => panic!("function {} not found", name),
     } as u32;
     FuncInstance::call(func_idx, func_instances, args)
-  }
-
-  pub fn validate_locals_type(&self) -> bool {
-    if self.locals.len() > self.locals_len as usize {
-      false
-    } else {
-    self.locals.iter().zip(self.locals_types.iter()).all(|(l, t)| l.eq_for_value_type(t))
-    }
   }
 }

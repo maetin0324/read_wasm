@@ -13,7 +13,7 @@ struct Cli {
     entry_point: String,
 
     #[clap(short, long)]
-    locals: Vec<u32>,
+    locals: Vec<i64>,
 }
 
 fn main() {
@@ -25,8 +25,10 @@ fn main() {
     let wasm = Wasm::new(file);
     println!("{:#?}", wasm);
 
+    let locals = Value::parse_from_i64_vec(args.locals);
+
     let mut machine = ExecMachine::new();
-    match machine.exec(wasm, &entry_point, vec![Value::I64(1), Value::I64(2)]) {
+    match machine.exec(wasm, &entry_point, locals) {
         Ok(_) => { println!("return {:?}", machine.value_stack.last()); },
         Err(e) => {
             println!("ExecuteError: {:?}", e.message);

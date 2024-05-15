@@ -32,9 +32,15 @@ pub enum Instructions {
   Call(u32),
   Drop,
   I32Const(i32),
+  I32Eqz,
+  I32Eq,
+  I64Eqz,
+  I64Eq,
   I64Const(i64),
   I32Add,
+  I32Sub,
   I64Add,
+  I64Sub,
   LocalGet(u32),
   LocalSet(u32),
   LocalTee(u32),
@@ -92,8 +98,14 @@ impl Instructions {
         let (input, val) = leb128_i64(input)?;
         Ok((input, Instructions::I64Const(val)))
       },
+      0x45 => Ok((input, Instructions::I32Eqz)),
+      0x46 => Ok((input, Instructions::I32Eq)),
+      0x50 => Ok((input, Instructions::I64Eqz)),
+      0x51 => Ok((input, Instructions::I64Eq)),
       0x6a => Ok((input, Instructions::I32Add)),
+      0x6b => Ok((input, Instructions::I32Sub)),
       0x7c => Ok((input, Instructions::I64Add)),
+      0x7d => Ok((input, Instructions::I64Sub)),
       0x20 => {
         let (input, val) = leb128_u32(input)?;
         Ok((input, Instructions::LocalGet(val)))

@@ -58,7 +58,10 @@ impl ExecMachine {
       let Some(instr) = func.instrs.get(func.pc) else {
         continue;
       };
-
+      // println!("value_stack: {:?}", self.value_stack);
+      // println!("call_stack: {:?}", self.call_stack);
+      // println!("func: {:?}", func);
+      // println!("instr: {:?}", instr);
       match instr {
         Instructions::Nop => {},
         Instructions::Unreachable => {
@@ -119,6 +122,64 @@ impl ExecMachine {
             }
           }
         },
+        Instructions::BrIf(idx) => {
+          match self.value_stack.pop() {
+            Some(Value::I32(val)) => {
+              if val != 0 {
+                let block_depth = func.label_stack.len() - 1;
+                if block_depth < *idx as usize {
+                  return Err(
+                    TrapError {
+                    message: "BrIf: label stack underflow".to_string(),
+                    vm: self.clone(),
+                  });
+                }
+
+                let mut end_count = block_depth - *idx as usize + 1;
+                loop {
+                  func.pc += 1;
+                  let instrs = match func.instrs.get(func.pc) {
+                    Some(i) => i.clone(),
+                    None => {
+                      return Err(TrapError {
+                        message: "BrIf: instruction not found".to_string(),
+                        vm: self.clone(),
+                      });
+                    }
+                  };
+
+                  if instrs == Instructions::End {
+                    end_count -= 1;
+                    let frame = func.label_stack.pop().unwrap();
+                    self.end_block(frame)?;
+                    if end_count == 0 {
+                      break;
+                    }
+                  }
+                }
+              }
+            },
+            _ => {
+              return Err(TrapError {
+                message: "BrIf: invalid value type".to_string(),
+                vm: self.clone(),
+              });
+            }
+          }
+        }
+        Instructions::Return => {
+          let frame = match func.label_stack.pop() {
+            Some(f) => f,
+            None => {
+              return Err(TrapError {
+                message: "Return: label stack underflow".to_string(),
+                vm: self.clone(),
+              });
+            }
+          };
+          self.end_block(frame)?;
+          continue;
+        },
         Instructions::Call(idx) => {
           let callee = match self.func_instances.get(*idx as usize) {
             Some(f) => f,
@@ -131,9 +192,18 @@ impl ExecMachine {
             }
           };
           let mut args = Vec::new();
-          for _ in 0..callee.locals_len {
+          for pty in callee.param_types.iter() {
             match self.value_stack.pop() {
-              Some(v) => args.insert(0, v),
+              Some(v) => {
+                if v.eq_for_value_type(pty) {
+                  args.insert(0, v);
+                } else {
+                  return Err(TrapError {
+                    message: "Call: invalid value type".to_string(),
+                    vm: self.clone(),
+                  });
+                }
+              }
               None => {
                 return Err(TrapError {
                   message: "Call: value stack underflow".to_string(),
@@ -155,6 +225,90 @@ impl ExecMachine {
         Instructions::I64Const(val) => {
           self.value_stack.push(Value::I64(*val));
         },
+        Instructions::I32Eqz => {
+          let val = match self.value_stack.pop() {
+            Some(v) => v,
+            None => {
+              return Err(TrapError {
+                message: "I32Eqz: value stack underflow".to_string(),
+                vm: self.clone(),
+              });
+            }
+          };
+          let ret = match val {
+            Value::I32(v) => Value::I32(if v == 0 { 1 } else { 0 }),
+            _ => {
+              return Err(TrapError {
+                message: "Invalid type for I32Eqz".to_string(),
+                vm: self.clone(),
+              });
+            }
+          };
+          self.value_stack.push(ret);
+        }
+        Instructions::I32Eq => {
+          let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
+            (Some(a), Some(b)) => (a, b),
+            _ => {
+              return Err(TrapError {
+                message: "I32Eq: value stack underflow".to_string(),
+                vm: self.clone(),
+              });
+            }
+          };
+          let ret = match (a, b) {
+            (Value::I32(a), Value::I32(b)) => Value::I32(if a == b { 1 } else { 0 }),
+            _ => {
+              return Err(TrapError {
+                message: "Invalid type for I32Eq".to_string(),
+                vm: self.clone(),
+              });
+            }
+          };
+          self.value_stack.push(ret);
+        },
+        Instructions::I64Eqz => {
+          let val = match self.value_stack.pop() {
+            Some(v) => v,
+            None => {
+              return Err(TrapError {
+                message: "I64Eqz: value stack underflow".to_string(),
+                vm: self.clone(),
+              });
+            }
+          };
+          let ret = match val {
+            Value::I64(v) => Value::I32(if v == 0 { 1 } else { 0 }),
+            _ => {
+              return Err(TrapError {
+                message: "Invalid type for I64Eqz".to_string(),
+                vm: self.clone(),
+              });
+            }
+          };
+          self.value_stack.push(ret);
+        }
+        Instructions::I64Eq => {
+          let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
+            (Some(a), Some(b)) => (a, b),
+            _ => {
+              return Err(TrapError {
+                message: "I64Eq: value stack underflow".to_string(),
+                vm: self.clone(),
+              });
+            }
+          };
+          let ret = match (a, b) {
+            (Value::I64(a), Value::I64(b)) => Value::I32(if a == b { 1 } else { 0 }),
+            _ => {
+              return Err(TrapError {
+                message: "Invalid type for I64Eq".to_string(),
+                vm: self.clone(),
+              });
+            }
+          };
+          self.value_stack.push(ret);
+        },
         Instructions::I32Add => {
           let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
             (Some(a), Some(b)) => (a, b),
@@ -170,6 +324,27 @@ impl ExecMachine {
             _ => {
               return Err(TrapError {
                 message: "Invalid type for I32Add".to_string(),
+                vm: self.clone(),
+              });
+            }
+          };
+          self.value_stack.push(ret);
+        },
+        Instructions::I32Sub => {
+          let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
+            (Some(a), Some(b)) => (a, b),
+            _ => {
+              return Err(TrapError {
+                message: "I32Sub: value stack underflow".to_string(),
+                vm: self.clone(),
+              });
+            }
+          };
+          let ret = match (a, b) {
+            (Value::I32(a), Value::I32(b)) => Value::I32(b - a),
+            _ => {
+              return Err(TrapError {
+                message: "Invalid type for I32Sub".to_string(),
                 vm: self.clone(),
               });
             }
@@ -197,7 +372,29 @@ impl ExecMachine {
           };
           self.value_stack.push(ret);
         },
+        Instructions::I64Sub => {
+          let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
+            (Some(a), Some(b)) => (a, b),
+            _ => {
+              return Err(TrapError {
+                message: "I64Sub: value stack underflow".to_string(),
+                vm: self.clone(),
+              });
+            }
+          };
+          let ret = match (a, b) {
+            (Value::I64(a), Value::I64(b)) => Value::I64(b - a),
+            _ => {
+              return Err(TrapError {
+                message: "Invalid type for I64Sub".to_string(),
+                vm: self.clone(),
+              });
+            }
+          };
+          self.value_stack.push(ret);
+        },
         Instructions::LocalGet(idx) => {
+          self.validate_local(&func, idx)?;
           let val = match func.locals.get(*idx as usize) {
             Some(v) => v.clone(),
             None => {
@@ -211,6 +408,7 @@ impl ExecMachine {
           self.value_stack.push(val);
         },
         Instructions::LocalSet(idx) => {
+          self.validate_local(&func, idx)?;
           let val = match self.value_stack.pop() {
             Some(v) => v,
             None => {
@@ -220,7 +418,7 @@ impl ExecMachine {
               });
             }
           };
-          if !val.eq_for_value_type(&func.locals_types[*idx as usize]) {
+          if !Value::match_value(&val, &func.locals[*idx as usize]) {
             return Err(TrapError {
               message: "LocalSet: invalid value type".to_string(),
               vm: self.clone(),
@@ -229,6 +427,7 @@ impl ExecMachine {
           func.locals[*idx as usize] = val;
         },
         Instructions::LocalTee(idx) => {
+          self.validate_local(&func, idx)?;
           let val = match self.value_stack.last() {
             Some(v) => v.clone(),
             None => {
@@ -238,7 +437,7 @@ impl ExecMachine {
               });
             }
           };
-          if !val.eq_for_value_type(&func.locals_types[*idx as usize]) {
+          if !Value::match_value(&val, &func.locals[*idx as usize]) {
             return Err(TrapError {
               message: "LocalTee: invalid value type".to_string(),
               vm: self.clone(),
@@ -282,6 +481,16 @@ impl ExecMachine {
     self.value_stack = frame.value_stack_evac;
     if let Some(v) = ret {
       self.value_stack.push(v);
+    }
+    Ok(())
+  }
+
+  pub fn validate_local(&self, func: &FuncInstance, idx: &u32) -> Result<(), TrapError> {
+    if func.locals.len() <= *idx as usize {
+      return Err(TrapError {
+        message: format!("LocalGet: local {} not found", idx),
+        vm: self.clone(),
+      });
     }
     Ok(())
   }
