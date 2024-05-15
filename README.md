@@ -20,43 +20,178 @@ Options:
 
 # 使用例
 ```sh
-maetin🌱 ~/workspace/rust/read-wasm on  main [!] is 📦 v0.1.0 via 🦀 v1.77.2
-（▰╹◡╹）❯  cat add.wat
+rmaeda🌱 ~/workspace/rust/read-wasm on  main [!] is 📦 v0.1.0 via 🦀 v1.76.0
+（▰╹◡╹）❯  cat block.wat
 (module
-  (type (func (result i64)))
+  (type (func (param i64) (result i64)))
   (type (func (param i64 i64) (result i64)))
-  (func $_start (type 1) (param i64 i64) (result i64)
-    (local i64)
+  (func $_start (type 0) (param i64) (result i64)
     local.get 0
-    call $one
-    i64.add
+    i64.const 0
+    call 1
   )
-  (func $one (type 0) (result i64)
-    i64.const 12
-    i64.const 34
-    i64.add
+  (func $_arithmetic_seriese (type 1) (param i64 i64) (result i64)
+    (local i64)
+    block
+      local.get 1
+      local.set 2
+      local.get 0
+      i64.eqz
+      br_if 0
+      local.get 0
+      local.get 1
+      i64.add
+      local.set 2
+      local.get 0
+      i64.const 1
+      i64.sub
+      local.get 2
+      call 1
+      local.set 2
+    end
+    local.get 2
   )
   (export "_start" (func $_start))
-  (export "one" (func $one))
-)
-maetin🌱 ~/workspace/rust/read-wasm on  main [!] is 📦 v0.1.0 via 🦀 v1.77.2
-（▰╹◡╹）❯  wat2wasm add.wat
+)%
 
-maetin🌱 ~/workspace/rust/read-wasm on  main [!] is 📦 v0.1.0 via 🦀 v1.77.2
-（▰╹◡╹）❯  cargo run -- add.wasm
-  Compiling read-wasm v0.1.0 (/home/maetin/workspace/rust/read-wasm)
-  Finished dev [unoptimized + debuginfo] target(s) in 1.23s
-    Running `target/debug/read-wasm add.wasm`
-section_id: 1, section_size: 11
+rmaeda🌱 ~/workspace/rust/read-wasm on  main [!] is 📦 v0.1.0 via 🦀 v1.76.0
+（▰╹◡╹）❯  wat2wasm block.wat
+
+rmaeda🌱 ~/workspace/rust/read-wasm on  main [!] is 📦 v0.1.0 via 🦀 v1.76.0
+（▰╹◡╹）❯  cargo run -- block.wasm -l 100
+    Finished dev [unoptimized + debuginfo] target(s) in 0.02s
+     Running `target/debug/read-wasm block.wasm -l 100`
+section_id: 1, section_size: 12
 TypeSection
 section_id: 3, section_size: 3
 FunctionSection
-section_id: 7, section_size: 16
+section_id: 7, section_size: 10
 ExportSection
-section_id: 10, section_size: 19
+section_id: 10, section_size: 47
 CodeSection
-Wasm { type_section: Some([FuncType { param_types: [], return_types: [I64] }, FuncType { param_types: [I64, I64], return_types: [I64] }]), function_section: Some([Func { type_idx: 1 }, Func { type_idx: 0 }]), export_section: Some([ExportFunc { name: "_start", desc: Func, func_idx: 0 }, ExportFunc { name: "one", desc: Func, func_idx: 1 }]), code_section: Some([Code { size: 9, locals: [LocalVar { count: 1, value_type: I64 }], instrs: [LocalGet(0), Call(1), I64Add] }, Code { size: 7, locals: [], instrs: [I64Const(12), I64Const(34), I64Add] }]) }
-return Some(I64(47))
+size: 8
+size: 36
+Wasm {
+    type_section: Some(
+        [
+            FuncType {
+                param_types: [
+                    I64,
+                ],
+                return_types: [
+                    I64,
+                ],
+            },
+            FuncType {
+                param_types: [
+                    I64,
+                    I64,
+                ],
+                return_types: [
+                    I64,
+                ],
+            },
+        ],
+    ),
+    function_section: Some(
+        [
+            Func {
+                type_idx: 0,
+            },
+            Func {
+                type_idx: 1,
+            },
+        ],
+    ),
+    export_section: Some(
+        [
+            ExportFunc {
+                name: "_start",
+                desc: Func,
+                func_idx: 0,
+            },
+        ],
+    ),
+    code_section: Some(
+        [
+            Code {
+                size: 8,
+                locals: [],
+                instrs: [
+                    LocalGet(
+                        0,
+                    ),
+                    I64Const(
+                        0,
+                    ),
+                    Call(
+                        1,
+                    ),
+                ],
+            },
+            Code {
+                size: 36,
+                locals: [
+                    LocalVar {
+                        count: 1,
+                        value_type: I64,
+                    },
+                ],
+                instrs: [
+                    Block(
+                        Block {
+                            block_type: Void,
+                        },
+                    ),
+                    LocalGet(
+                        1,
+                    ),
+                    LocalSet(
+                        2,
+                    ),
+                    LocalGet(
+                        0,
+                    ),
+                    I64Eqz,
+                    BrIf(
+                        0,
+                    ),
+                    LocalGet(
+                        0,
+                    ),
+                    LocalGet(
+                        1,
+                    ),
+                    I64Add,
+                    LocalSet(
+                        2,
+                    ),
+                    LocalGet(
+                        0,
+                    ),
+                    I64Const(
+                        1,
+                    ),
+                    I64Sub,
+                    LocalGet(
+                        2,
+                    ),
+                    Call(
+                        1,
+                    ),
+                    LocalSet(
+                        2,
+                    ),
+                    End,
+                    LocalGet(
+                        2,
+                    ),
+                ],
+            },
+        ],
+    ),
+}
+return Some(I64(5050))
 ```
 
 # ToDo
@@ -64,8 +199,9 @@ return Some(I64(47))
 - [ ] ImportSection, GlobalSection, TableSection, MemorySection等のパース
 - [x] I64.const, addなどの基本的な命令の実装
 - [x] call命令で関数呼び出し
-- [ ] label_stackやblock, br, loopなどの命令の実装
-- [ ] 引数validationの実装
+- [x] label_stackやblock, br, loopなどの命令の実装
+- [x] 再帰関数が動くようにする
+- [x] 引数validationの実装
 - [ ] 型検査器の実装
 - [ ] 全体テストの追加
-- [ ] 今panic!でごまかしているところを適切にエラーハンドリングする
+- [x] 今panic!でごまかしているところを適切にエラーハンドリングする
