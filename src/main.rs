@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::io::BufReader;
 use clap::{command, Parser};
 use read_wasm::binary::wasm::Wasm;
 use read_wasm::exec::exec_machine::ExecMachine;
@@ -22,7 +23,7 @@ fn main() {
     let entry_point = args.entry_point;
     
     let file = File::open(filename).unwrap();
-    let wasm = Wasm::new(file);
+    let wasm = Wasm::new(BufReader::new(file));
     println!("{:#?}", wasm);
 
     let locals = Value::parse_from_i64_vec(args.locals);
