@@ -1,5 +1,3 @@
-use std::fs::File;
-use std::io::Write;
 use super::type_sec::FuncType;
 use super::func_sec::Func;
 use super::export_sec::ExportFunc;
@@ -27,12 +25,10 @@ impl Section {
   pub fn match_section(section_id: u8, section_data: &[u8]) -> Section{
     match section_id {
       0 => {
-        println!("CustomSection");
         Section::CustomSection
       },
-      1=> {
+      1 => {
         println!("TypeSection");
-        File::create("type.section").unwrap().write_all(section_data).unwrap();
 
         let func_types = match FuncType::parse(section_data) {
           Ok((_, func_types)) => func_types,
@@ -42,12 +38,9 @@ impl Section {
         Section::TypeSection(func_types)
       },
       2 => {
-        println!("ImportSection");
         Section::ImportSection
       },
       3 => {
-        println!("FunctionSection");
-        File::create("function.section").unwrap().write_all(section_data).unwrap();
         let funcs = match Func::parse(section_data) {
           Ok((_, funcs)) => funcs,
           Err(e) => panic!("Error: {:#x?}", e),
@@ -55,20 +48,15 @@ impl Section {
         Section::FunctionSection(funcs)
       },
       4 => {
-        println!("TableSection");
         Section::TableSection
       },
       5 => {
-        println!("MemorySection");
         Section::MemorySection
       },
       6 => {
-        println!("GlobalSection");
         Section::GlobalSection
       },
       7 => {
-        println!("ExportSection");
-        File::create("export.section").unwrap().write_all(section_data).unwrap();
         let export_funcs = match ExportFunc::parse(section_data) {
           Ok((_, export_funcs)) => export_funcs,
           Err(e) => panic!("Error: {:#x?}", e),
@@ -77,33 +65,22 @@ impl Section {
         Section::ExportSection(export_funcs)
       },
       8 => {
-        println!("StartSection");
         Section::StartSection
       },
       9 => {
-        println!("ElementSection");
         Section::ElementSection
       },
       10 => {
-        println!("CodeSection");
-        File::create("code.section").unwrap().write_all(section_data).unwrap();
         let codes = match Code::parse(section_data){
           Ok((_, codes)) => codes,
           Err(e) => panic!("Error: {:#x?}", e),
         };
-        // codes.iter().for_each(|code| {
-        //   code.instrs.iter().for_each(|instr| {
-        //     println!("{:?}", instr);
-        //   });
-        // });
         Section::CodeSection(codes)
       },
       11 => {
-        println!("DataSection");
         Section::DataSection
       },
       12 => {
-        println!("DataCountSection");
         Section::DataCountSection
       },
       _ => panic!("Unknown section id: {}", section_id),

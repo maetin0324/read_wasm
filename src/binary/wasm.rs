@@ -45,7 +45,6 @@ impl Wasm {
       if section_id == 0 && section_size == 0 {
           break;
       }
-      println!("section_id: {}, section_size: {}", section_id, section_size);
 
       let section = Section::match_section(section_id, &section_data);
       match section {
