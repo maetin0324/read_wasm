@@ -1,0 +1,9 @@
+services:
+  read-wasm:
+    image: rust:latest
+    volumes:
+      - .:/app
+    working_dir: /app
+    environment:
+      - USER=user
+
