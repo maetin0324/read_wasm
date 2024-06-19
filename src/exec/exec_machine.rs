@@ -1,9 +1,7 @@
-
-
-use crate::binary::type_sec::FuncType;
 use crate::binary::wasm::Wasm;
 use crate::binary::instructions::{BlockType, Instructions};
 use super::block_frame::BlockFrame;
+use super::store::Store;
 use super::value::Value;
 use super::func_instance::FuncInstance;
 
@@ -11,8 +9,8 @@ use super::func_instance::FuncInstance;
 pub struct ExecMachine {
   pub value_stack: Vec<Value>,
   pub call_stack: Vec<FuncInstance>,
-  pub func_instances: Vec<FuncInstance>,
-  pub func_types: Vec<FuncType>,
+  // pub func_instances: Vec<FuncInstance>,
+  pub store: Store,
 }
 
 #[derive(Debug)]
@@ -32,24 +30,16 @@ impl ExecMachine {
     ExecMachine {
       value_stack: Vec::new(),
       call_stack: Vec::new(),
-      func_instances: Vec::new(),
-      func_types: Vec::new(),
+      store: Store::default(),
     }
   }
 
   pub fn exec(&mut self, wasm: Wasm, entry_point:&str, locals: Vec<Value>) -> Result<&ExecMachine, TrapError> {
-    self.func_types = match &wasm.type_section {
-      Some(types) => types.clone(),
-      None => {
-        return Err(TrapError {
-          message: "Type section not found".to_string(),
-          vm: self.clone(),
-        });
-      }
-    };
-    let func_instances = FuncInstance::new(wasm);
+    let func_instances = FuncInstance::new(&wasm);
+    let store = Store::new(func_instances.clone());
     self.call_stack.push(FuncInstance::call_by_name(entry_point, &func_instances, locals));
-    self.func_instances = func_instances;
+    // self.func_instances = func_instances;
+    self.store = store;
     self.run()
   }
 
@@ -181,16 +171,7 @@ impl ExecMachine {
           continue;
         },
         Instructions::Call(idx) => {
-          let callee = match self.func_instances.get(*idx as usize) {
-            Some(f) => f,
-            None => {
-              let message = format!("Call: function {} not found", idx);
-              return Err(TrapError {
-                message,
-                vm: self.clone(),
-              });
-            }
-          };
+          let callee = self.store.get_func(*idx as usize);
           let mut args = Vec::new();
           for pty in callee.param_types.iter() {
             match self.value_stack.pop() {
@@ -212,7 +193,7 @@ impl ExecMachine {
               }
             }
           }
-          let called_func = FuncInstance::call(*idx, &self.func_instances, args);
+          let called_func = FuncInstance::call(*idx, &self.store.funcs, args);
           self.call_stack.push(called_func);
           continue;
         }

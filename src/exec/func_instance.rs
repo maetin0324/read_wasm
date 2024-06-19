@@ -17,10 +17,10 @@ pub struct FuncInstance {
 }
 
 impl FuncInstance {
-  pub fn new(wasm: Wasm) -> Vec<FuncInstance> {
+  pub fn new(wasm: &Wasm) -> Vec<FuncInstance> {
     let mut func_instances: Vec<FuncInstance> = Vec::new();
 
-    match (wasm.type_section, wasm.function_section, wasm.export_section, wasm.code_section) {
+    match (&wasm.type_section, &wasm.function_section, &wasm.export_section, &wasm.code_section) {
       (Some(types), Some(funcs), Some(exports), Some(codes)) => {
         for (i, (func, code)) in funcs.iter().zip(codes.iter()).enumerate() {
 
