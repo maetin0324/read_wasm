@@ -9,7 +9,6 @@ use super::func_instance::FuncInstance;
 pub struct ExecMachine {
   pub value_stack: Vec<Value>,
   pub call_stack: Vec<FuncInstance>,
-  // pub func_instances: Vec<FuncInstance>,
   pub store: Store,
 }
 
@@ -36,10 +35,8 @@ impl ExecMachine {
 
   pub fn exec(&mut self, wasm: Wasm, entry_point:&str, locals: Vec<Value>) -> Result<&ExecMachine, TrapError> {
     let func_instances = FuncInstance::new(&wasm);
-    let store = Store::new(func_instances.clone());
-    self.call_stack.push(FuncInstance::call_by_name(entry_point, &func_instances, locals));
-    // self.func_instances = func_instances;
-    self.store = store;
+    self.store = Store::new(func_instances.clone());
+    self.call_stack.push(self.store.call_func_by_name(entry_point, locals));
     self.run()
   }
 
@@ -193,7 +190,7 @@ impl ExecMachine {
               }
             }
           }
-          let called_func = FuncInstance::call(*idx, &self.store.funcs, args);
+          let called_func = self.store.call_func(*idx as usize, args);
           self.call_stack.push(called_func);
           continue;
         }

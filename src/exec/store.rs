@@ -1,5 +1,5 @@
 use crate::binary::instructions::Instructions;
-use super::func_instance::FuncInstance;
+use super::{func_instance::FuncInstance, value::Value};
 
 #[derive(Debug, Default, Clone)]
 pub struct Store {
@@ -28,5 +28,33 @@ impl Store {
       Some(f) => f,
       None => panic!("func_idx out of range"),
     }
+  }
+
+  pub fn call_func(&self, func_idx:usize, args: Vec<Value>) -> FuncInstance {
+    let mut func_instance = self.get_func(func_idx).clone();
+    if args.len() == func_instance.param_types.len() {
+      if args.iter().zip(&mut func_instance.param_types.iter()).all(|(a, b)| a.eq_for_value_type(b)) {
+        for (i, a) in args.iter().enumerate() {
+          func_instance.locals[i] = a.clone();
+        }
+      } else {
+        panic!("Invalid args type");
+      }
+    } else {
+      panic!("Invalid args length");
+    }
+    func_instance
+  }
+
+  pub fn call_func_by_name(&self, name: &str, args: Vec<Value>) -> FuncInstance {
+    let func_idx = match self.funcs.iter()
+      .position(|f| f.name.as_ref().map_or(false, |n| n == name)){
+      Some(idx) => idx,
+      None => {
+        println!("funcs: {:?}", self.funcs);
+        panic!("function {} not found", name)
+      },
+    };
+    self.call_func(func_idx, args)
   }
 }
