@@ -46,7 +46,7 @@ impl Wasm {
           break;
       }
 
-      let section = Section::match_section(section_id, &section_data);
+      let section = Section::match_section(section_id, section_data);
       match section {
         Section::TypeSection(func_types) => {
             wasm.type_section = Some(func_types);
@@ -72,16 +72,16 @@ fn check_magic_and_version(data: &[u8]) -> &[u8] {
     Ok((data, _)) => data,
     Err(e) => panic!("Unexpected magic number: {:#x?}", e),
   };
-  let data = match tag::<_, _, ()>(VERSION)(data) {
+  
+  (match tag::<_, _, ()>(VERSION)(data) {
     Ok((data, _)) => data,
     Err(e) => panic!("Unexpected version number: {:#x?}", e),
-  };
-  data
+  }) as _
 }
 
 
 fn parse_section_id_and_content(data: &[u8]) -> IResult<&[u8], (u8, u32, &[u8])> {
-  if data.len() == 0 {
+  if data.is_empty() {
     return Ok((data, (0, 0, &[])));
   }
   let (data, section_id) = take(1u8)(data)?;

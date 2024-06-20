@@ -22,19 +22,19 @@ use std::path;
   #[test]
   fn test_parse_module_wasm() {
     let wasm = create_wasm_from_testsuite("tests/testsuite/module.wat");
-    assert_eq!(wasm.type_section.is_none(), true);
-    assert_eq!(wasm.function_section.is_none(), true);
-    assert_eq!(wasm.export_section.is_none(), true);
-    assert_eq!(wasm.code_section.is_none(), true);
+    assert!(wasm.type_section.is_none());
+    assert!(wasm.function_section.is_none());
+    assert!(wasm.export_section.is_none());
+    assert!(wasm.code_section.is_none());
   }
 
   #[test]
   fn test_parse_typesec_wasm() {
     let wasm = create_wasm_from_testsuite("tests/testsuite/typesec.wat");
-    assert_eq!(wasm.type_section.is_some(), true);
-    assert_eq!(wasm.function_section.is_none(), true);
-    assert_eq!(wasm.export_section.is_none(), true);
-    assert_eq!(wasm.code_section.is_none(), true);
+    assert!(wasm.type_section.is_some());
+    assert!(wasm.function_section.is_none());
+    assert!(wasm.export_section.is_none());
+    assert!(wasm.code_section.is_none());
 
     let types = wasm.type_section.unwrap();
     assert_eq!(types.len(), 1);
