@@ -1,3 +1,9 @@
+use std::fs::File;
+use std::io::Write;
+
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
+
 use crate::binary::wasm::Wasm;
 use crate::binary::instructions::{BlockType, Instructions};
 use super::block_frame::BlockFrame;
@@ -5,7 +11,7 @@ use super::store::Store;
 use super::value::Value;
 use super::func_instance::FuncInstance;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecMachine {
   pub value_stack: Vec<Value>,
   pub call_stack: Vec<FuncInstance>,
@@ -33,17 +39,29 @@ impl ExecMachine {
     }
   }
 
-  pub fn exec(&mut self, wasm: Wasm, entry_point:&str, locals: Vec<Value>) -> Result<&ExecMachine, TrapError> {
+  pub fn init(wasm: Wasm, entry_point:&str, locals: Vec<Value>) -> ExecMachine {
+    let mut vm = ExecMachine::new();
     let func_instances = FuncInstance::new(&wasm);
-    self.store = Store::new(func_instances.clone());
-    self.call_stack.push(self.store.call_func_by_name(entry_point, locals));
+    vm.store = Store::new(func_instances.clone());
+    vm.call_stack.push(vm.store.call_func_by_name(entry_point, locals));
+    vm
+  }
+
+  pub async fn deserialize(vm: &[u8]) -> Result<ExecMachine> {
+    match bincode::deserialize(vm) {
+      Ok(vm) => Ok(vm),
+      Err(e) => Err(anyhow::anyhow!("Deserialize error: {:?}", e)),
+    }
+  }
+
+  pub async fn exec(&mut self) -> Result<&ExecMachine, TrapError> {
     while let Some(func) = self.call_stack.pop() {
-      self.run(func)?;
+      self.run(func).await?;
     }
     Ok(self)
   }
 
-  pub fn run(&mut self, mut func: FuncInstance)  -> Result<&ExecMachine, TrapError> {
+  pub async fn run(&mut self, mut func: FuncInstance)  -> Result<&ExecMachine, TrapError> {
     let Some(instr) = func.instrs.get(func.pc) else {
       return Ok(self);
     };
@@ -167,6 +185,7 @@ impl ExecMachine {
         return Ok(self);
       },
       Instructions::Call(idx) => {
+        self.serialize_vm();
         let callee = self.store.get_func(*idx as usize);
         let mut args = Vec::new();
         for pty in callee.param_types.iter() {
@@ -469,5 +488,9 @@ impl ExecMachine {
       });
     }
     Ok(())
+  }
+
+  pub fn serialize_vm(&self) -> Vec<u8> {
+    bincode::serialize(&self).unwrap()
   }
 }

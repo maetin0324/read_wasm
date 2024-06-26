@@ -28,8 +28,6 @@ impl Section {
         Section::CustomSection
       },
       1 => {
-        println!("TypeSection");
-
         let func_types = match FuncType::parse(section_data) {
           Ok((_, func_types)) => func_types,
           Err(e) => panic!("Error: {:#x?}", e),

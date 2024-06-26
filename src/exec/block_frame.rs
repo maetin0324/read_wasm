@@ -1,8 +1,9 @@
+use serde::{Deserialize, Serialize};
 use crate::binary::instructions::{Block, BlockType};
 
 use super::value::Value;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq , Serialize, Deserialize)]
 pub struct BlockFrame {
   pub value_stack_evac: Vec<Value>,
   pub return_type: BlockType,

@@ -1,4 +1,5 @@
 use core::panic;
+use serde::{Deserialize, Serialize};
 
 use nom::{
   number::complete::le_u8, IResult,
@@ -8,18 +9,18 @@ use nom_leb128::{leb128_i32, leb128_i64, leb128_u32};
 
 use super::value_type::ValueType;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum BlockType {
   Void,
   Value(ValueType),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Block {
   pub block_type: BlockType,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Instructions {
   Unreachable,
   Nop,

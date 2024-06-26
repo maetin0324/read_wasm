@@ -45,19 +45,19 @@ use std::path;
     assert_eq!(types[0].return_types, vec![binary::value_type::ValueType::I32]);
   }
 
-  #[test]
-  fn test_exec_add_wasm() {
+  #[tokio::test]
+  async fn test_exec_add_wasm() {
     let wasm = create_wasm_from_testsuite("tests/testsuite/add.wat");
-    let mut em = ExecMachine::new();
-    em.exec(wasm, "_start", vec![]).unwrap();
+    let mut em = ExecMachine::init(wasm, "_start", vec![]);
+    em.exec().await.unwrap();
     assert_eq!(em.value_stack.last().unwrap(), &Value::I64(3));
   }
 
-  #[test]
-  fn test_exec_block_wasm() {
+  #[tokio::test]
+  async fn test_exec_block_wasm() {
     let wasm = create_wasm_from_testsuite("tests/testsuite/block.wat");
-    let mut em = ExecMachine::new();
-    em.exec(wasm, "_start", vec![Value::I64(100)]).unwrap();
+    let mut em = ExecMachine::init(wasm, "_start", vec![Value::I64(100)]);
+    em.exec().await.unwrap();
     assert_eq!(em.value_stack.last().unwrap(), &Value::I64(5050));
   }
 }

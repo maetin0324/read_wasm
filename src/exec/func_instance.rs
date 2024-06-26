@@ -1,4 +1,5 @@
 use core::panic;
+use serde::{Deserialize, Serialize};
 
 use crate::binary::instructions::Instructions;
 use crate::binary::value_type::ValueType;
@@ -6,7 +7,7 @@ use crate::binary::wasm::Wasm;
 use super::block_frame::BlockFrame;
 use super::value::Value;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq , Serialize, Deserialize)]
 pub struct FuncInstance {
   pub name: Option<String>,
   pub param_types: Vec<ValueType>,

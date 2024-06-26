@@ -1,6 +1,7 @@
+use serde::{Deserialize, Serialize};
 use crate::binary::value_type::ValueType;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq , Serialize, Deserialize)]
 pub enum Value {
   I32(i32),
   I64(i64),
