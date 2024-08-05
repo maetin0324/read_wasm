@@ -11,13 +11,12 @@ pub enum Value {
 
 impl Value {
   pub fn eq_for_value_type(&self, other: &ValueType) -> bool {
-    match (self, other) {
-      (Value::I32(_), ValueType::I32) => true,
-      (Value::I64(_), ValueType::I64) => true,
-      (Value::F32(_), ValueType::F32) => true,
-      (Value::F64(_), ValueType::F64) => true,
-      _ => false,
-    }
+    matches!((self, other), 
+        (Value::I32(_), ValueType::I32) 
+      | (Value::I64(_), ValueType::I64) 
+      | (Value::F32(_), ValueType::F32) 
+      | (Value::F64(_), ValueType::F64)
+    )
   }
 
   pub fn init_from_valtype(valtype: &ValueType) -> Value {
@@ -30,13 +29,12 @@ impl Value {
   }
 
   pub fn match_value(a: &Value, b: &Value) -> bool {
-    match (a, b) {
-      (&Value::I32(_), &Value::I32(_)) => true,
-      (&Value::I64(_), &Value::I64(_)) => true,
-      (&Value::F32(_), &Value::F32(_)) => true,
-      (&Value::F64(_), &Value::F64(_)) => true,
-      _ => false,
-    }
+    matches!((a, b), 
+        (&Value::I32(_), &Value::I32(_)) 
+      | (&Value::I64(_), &Value::I64(_)) 
+      | (&Value::F32(_), &Value::F32(_)) 
+      | (&Value::F64(_), &Value::F64(_))
+    )
   }
 
   pub fn parse_from_i64_vec(input: Vec<i64>) -> Vec<Value> {
