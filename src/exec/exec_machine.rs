@@ -6,7 +6,7 @@ use crate::binary::instructions::{BlockType, Instructions};
 use super::block_frame::BlockFrame;
 use super::store::Store;
 use super::value::Value;
-use super::func_instance::FuncInstance;
+use super::func_instance::{FuncInstance, InternalFunc};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecMachine {
@@ -53,12 +53,20 @@ impl ExecMachine {
 
   pub async fn exec(&mut self) -> Result<&ExecMachine, TrapError> {
     while let Some(func) = self.call_stack.pop() {
-      self.run(func).await?;
+      match func {
+        FuncInstance::External(_) => {
+          return Err(TrapError {
+            message: "External function cannot be called".to_string(),
+            vm: self.clone(),
+          });
+        },
+        FuncInstance::Internal(func) => {self.run(func).await?;},
+      }
     }
     Ok(self)
   }
 
-  pub async fn run(&mut self, mut func: FuncInstance)  -> Result<&ExecMachine, TrapError> {
+  pub async fn run(&mut self, mut func: InternalFunc)  -> Result<&ExecMachine, TrapError> {
     let Some(instr) = func.instrs.get(func.pc) else {
       return Ok(self);
     };
@@ -182,10 +190,10 @@ impl ExecMachine {
         return Ok(self);
       },
       Instructions::Call(idx) => {
-        self.serialize_vm();
+        // self.serialize_vm();
         let callee = self.store.get_func(*idx as usize);
         let mut args = Vec::new();
-        for pty in callee.param_types.iter() {
+        for pty in callee.param_types().iter() {
           match self.value_stack.pop() {
             Some(v) => {
               if v.eq_for_value_type(pty) {
@@ -442,7 +450,7 @@ impl ExecMachine {
     }
 
     func.pc += 1;
-    self.call_stack.push(func);
+    self.call_stack.push(FuncInstance::Internal(func));
     Ok(self)
   }
 
@@ -477,7 +485,7 @@ impl ExecMachine {
     Ok(())
   }
 
-  pub fn validate_local(&self, func: &FuncInstance, idx: &u32) -> Result<(), TrapError> {
+  pub fn validate_local(&self, func: &InternalFunc, idx: &u32) -> Result<(), TrapError> {
     if func.locals.len() <= *idx as usize {
       return Err(TrapError {
         message: format!("LocalGet: local {} not found", idx),
