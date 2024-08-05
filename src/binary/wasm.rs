@@ -5,6 +5,7 @@ use nom_leb128::leb128_u32;
 
 use super::section::Section;
 use super::type_sec::FuncType;
+use super::import_sec::Import;
 use super::func_sec::Func;
 use super::export_sec::ExportFunc;
 use super::code_sec::Code;
@@ -13,6 +14,7 @@ use super::code_sec::Code;
 #[derive(Debug, PartialEq)]
 pub struct Wasm {
   pub type_section: Option<Vec<FuncType>>,
+  pub import_section: Option<Vec<Import>>,
   pub function_section: Option<Vec<Func>>,
   pub export_section: Option<Vec<ExportFunc>>,
   pub code_section: Option<Vec<Code>>,
@@ -31,6 +33,7 @@ impl Wasm {
 
     let mut wasm = Wasm{
       type_section: None,
+      import_section: None,
       function_section: None,
       export_section: None,
       code_section: None,
@@ -50,6 +53,9 @@ impl Wasm {
       match section {
         Section::TypeSection(func_types) => {
             wasm.type_section = Some(func_types);
+        },
+        Section::ImportSection(imports) => {
+            wasm.import_section = Some(imports);
         },
         Section::FunctionSection(funcs) => {
             wasm.function_section = Some(funcs);

@@ -9,13 +9,12 @@ use std::path;
   use read_wasm::binary::wasm::Wasm;
   use read_wasm::exec::exec_machine::ExecMachine;
   use read_wasm::exec::value::Value;
-  use wat::parse_str;
 
   fn create_wasm_from_testsuite(path: &str) -> Wasm {
     let mut test_suite = String::new();
     File::open(path).unwrap()
       .read_to_string(&mut test_suite).unwrap();
-    let binary = parse_str(&test_suite).unwrap();
+    let binary = wat::parse_str(&test_suite).unwrap();
     Wasm::new(&binary[..])
   }
 
@@ -43,6 +42,21 @@ use std::path;
       binary::value_type::ValueType::I32
     ]);
     assert_eq!(types[0].return_types, vec![binary::value_type::ValueType::I32]);
+  }
+
+  #[test]
+  fn test_parse_importsec_wasm() {
+    let wasm = create_wasm_from_testsuite("tests/testsuite/import.wat");
+    assert!(wasm.import_section.is_some());
+    assert!(wasm.function_section.is_none());
+    assert!(wasm.export_section.is_none());
+    assert!(wasm.code_section.is_none());
+
+    let imports = wasm.import_section.unwrap();
+    assert_eq!(imports.len(), 2);
+    assert_eq!(imports[0].module, "env");
+    assert_eq!(imports[0].field, "one");
+    assert_eq!(imports[0].desc, binary::import_sec::ImportDesc::Func(0));
   }
 
   #[tokio::test]

@@ -1,4 +1,5 @@
 use super::type_sec::FuncType;
+use super::import_sec::Import;
 use super::func_sec::Func;
 use super::export_sec::ExportFunc;
 use super::code_sec::Code;
@@ -8,7 +9,7 @@ use super::code_sec::Code;
 pub enum Section {
   CustomSection,
   TypeSection(Vec<FuncType>),
-  ImportSection,
+  ImportSection(Vec<Import>),
   FunctionSection(Vec<Func>),
   TableSection,
   MemorySection,
@@ -36,7 +37,11 @@ impl Section {
         Section::TypeSection(func_types)
       },
       2 => {
-        Section::ImportSection
+        let imports = match Import::parse(section_data) {
+          Ok((_, imports)) => imports,
+          Err(e) => panic!("Error: {:#x?}", e),
+        };
+        Section::ImportSection(imports)
       },
       3 => {
         let funcs = match Func::parse(section_data) {
