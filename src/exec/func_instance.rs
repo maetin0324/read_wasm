@@ -38,7 +38,9 @@ impl FuncInstance {
 
     match (&wasm.type_section, &wasm.function_section, &wasm.export_section, &wasm.code_section) {
       (Some(types), Some(funcs), Some(exports), Some(codes)) => {
+        let import_func_count: usize;
         if let Some(inputs) = &wasm.import_section {
+          import_func_count = inputs.len();
           for input in inputs.iter() {
             if let ImportDesc::Func(type_idx) = &input.desc {
               let (param_types, return_types) = match types.get(*type_idx as usize) {
@@ -53,7 +55,8 @@ impl FuncInstance {
               }));
             }
           }
-        } 
+        } else { import_func_count = 0 }
+
         for (i, (func, code)) in funcs.iter().zip(codes.iter()).enumerate() {
 
           let param_types = match types.get(func.type_idx as usize) {
@@ -65,7 +68,7 @@ impl FuncInstance {
           let _ = code.locals.iter().map(|l| local_types.extend(l.to_value_type_vec()));
 
           let name: Option<String> = exports.iter().find_map(|e| {
-            if e.func_idx == i as u32 {
+            if e.func_idx == (i + import_func_count) as u32 {
               Some(e.name.clone())
             } else {
               None

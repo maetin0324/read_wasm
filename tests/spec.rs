@@ -8,7 +8,8 @@ use std::path;
   use read_wasm::binary;
   use read_wasm::binary::wasm::Wasm;
   use read_wasm::exec::exec_machine::ExecMachine;
-  use read_wasm::exec::value::Value;
+  use read_wasm::exec::func_instance::FuncInstance;
+use read_wasm::exec::value::Value;
 
   fn create_wasm_from_testsuite(path: &str) -> Wasm {
     let mut test_suite = String::new();
@@ -57,6 +58,25 @@ use std::path;
     assert_eq!(imports[0].module, "env");
     assert_eq!(imports[0].field, "one");
     assert_eq!(imports[0].desc, binary::import_sec::ImportDesc::Func(0));
+  }
+
+  #[tokio::test]
+  async fn test_instantiate_with_import() {
+    let wasm = create_wasm_from_testsuite("tests/testsuite/func.wat");
+    assert!(wasm.import_section.is_some());
+    assert!(wasm.function_section.is_some());
+    assert!(wasm.export_section.is_some());
+    assert!(wasm.code_section.is_some());
+
+    let func_instances = FuncInstance::new(&wasm);
+    assert_eq!(func_instances.len(), 3);
+    assert_eq!(func_instances[0].name().unwrap(), "one");
+    assert_eq!(func_instances[1].name().unwrap(), "none");
+    assert_eq!(func_instances[2].name().unwrap(), "_start");
+
+    let mut em = ExecMachine::init(wasm, "_start", vec![]);
+    em.exec().await.unwrap();
+    assert_eq!(em.value_stack.last().unwrap(), &Value::I64(3));
   }
 
   #[tokio::test]
