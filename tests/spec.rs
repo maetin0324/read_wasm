@@ -60,6 +60,21 @@ use read_wasm::exec::value::Value;
     assert_eq!(imports[0].desc, binary::import_sec::ImportDesc::Func(0));
   }
 
+  #[test]
+  fn test_parse_memorysec_wasm() {
+    let wasm = create_wasm_from_testsuite("tests/testsuite/memorysec.wat");
+    assert!(wasm.type_section.is_none());
+    assert!(wasm.import_section.is_none());
+    assert!(wasm.function_section.is_none());
+    assert!(wasm.memory_section.is_some());
+    assert!(wasm.export_section.is_none());
+    assert!(wasm.code_section.is_none());
+
+    let memories = wasm.memory_section.unwrap();
+    assert_eq!(memories[0].min, 0);
+    assert_eq!(memories[0].max, Some(10));
+  }
+
   #[tokio::test]
   async fn test_instantiate_with_import() {
     let wasm = create_wasm_from_testsuite("tests/testsuite/func.wat");

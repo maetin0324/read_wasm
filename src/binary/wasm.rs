@@ -3,6 +3,7 @@ use nom::bytes::complete::{tag, take};
 use nom::IResult;
 use nom_leb128::leb128_u32;
 
+use super::memory_sec::MemorySec;
 use super::section::Section;
 use super::type_sec::FuncType;
 use super::import_sec::Import;
@@ -16,6 +17,7 @@ pub struct Wasm {
   pub type_section: Option<Vec<FuncType>>,
   pub import_section: Option<Vec<Import>>,
   pub function_section: Option<Vec<Func>>,
+  pub memory_section: Option<Vec<MemorySec>>,
   pub export_section: Option<Vec<ExportFunc>>,
   pub code_section: Option<Vec<Code>>,
 }
@@ -35,6 +37,7 @@ impl Wasm {
       type_section: None,
       import_section: None,
       function_section: None,
+      memory_section: None,
       export_section: None,
       code_section: None,
     };
@@ -59,6 +62,9 @@ impl Wasm {
         },
         Section::FunctionSection(funcs) => {
             wasm.function_section = Some(funcs);
+        },
+        Section::MemorySection(memories) => {
+          wasm.memory_section = Some(memories);
         },
         Section::ExportSection(export_funcs) => {
             wasm.export_section = Some(export_funcs);

@@ -3,15 +3,25 @@ use serde::{Deserialize, Serialize};
 use crate::binary::instructions::Instructions;
 use super::{func_instance::FuncInstance, value::Value};
 
+pub const PAGE_SIZE: u32 = 65536; // 64Ki
+
 #[derive(Debug, Default, Clone, PartialEq , Serialize, Deserialize)]
 pub struct Store {
   pub funcs: Vec<FuncInstance>,
+  pub memories: Vec<MemoryInst>,
+}
+
+#[derive(Debug, Default, Clone, PartialEq , Serialize, Deserialize)]
+pub struct MemoryInst {
+  memory: Vec<u8>,
+  max: Option<u32>,
 }
 
 impl Store {
   pub fn new(funcs: Vec<FuncInstance>) -> Store {
     Store {
       funcs,
+      memories: Vec::new(),
     }
   }
 

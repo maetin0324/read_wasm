@@ -19,7 +19,6 @@ pub fn init_import() -> ImportTable {
   import.insert("env".to_owned(), add_hash);
 
   import
-
 }
 
 
