@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::binary::instructions::Instructions;
-use super::{func_instance::{self, FuncInstance}, value::Value};
+use super::{func_instance::FuncInstance, value::Value};
 
 #[derive(Debug, Default, Clone, PartialEq , Serialize, Deserialize)]
 pub struct Store {
