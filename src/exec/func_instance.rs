@@ -27,8 +27,9 @@ pub struct InternalFunc {
 #[derive(Debug, Clone, PartialEq , Serialize, Deserialize)]
 pub struct ExternalFunc {
   pub env_name: String,
-  pub name: Option<String>,
+  pub name: String,
   pub param_types: Vec<ValueType>,
+  pub params: Vec<Value>,
   pub return_types: Vec<ValueType>,
 }
 
@@ -49,8 +50,9 @@ impl FuncInstance {
               };
               func_instances.push(FuncInstance::External(ExternalFunc {
                 env_name: input.module.clone(),
-                name: Some(input.field.clone()),
+                name: input.field.clone(),
                 param_types,
+                params: Vec::new(),
                 return_types,
               }));
             }
@@ -98,7 +100,7 @@ impl FuncInstance {
   pub fn name(&self) -> Option<&String> {
     match self {
       FuncInstance::Internal(i) => i.name.as_ref(),
-      FuncInstance::External(e) => e.name.as_ref(),
+      FuncInstance::External(e) => Some(&e.name),
     }
   }
 

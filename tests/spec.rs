@@ -3,7 +3,7 @@
 mod tests {
   use std::fs::File;
 use std::io::Read;
-use std::path;
+use std::{path, vec};
 
   use read_wasm::binary;
   use read_wasm::binary::wasm::Wasm;
@@ -74,6 +74,14 @@ use read_wasm::exec::value::Value;
     assert_eq!(func_instances[1].name().unwrap(), "none");
     assert_eq!(func_instances[2].name().unwrap(), "_start");
 
+    let mut em = ExecMachine::init(wasm, "_start", vec![]);
+    em.exec().await.unwrap();
+    assert_eq!(em.value_stack.last().unwrap(), &Value::I64(3));
+  }
+
+  #[tokio::test]
+  async fn test_import_func() {
+    let wasm = create_wasm_from_testsuite("tests/testsuite/import_func.wat");
     let mut em = ExecMachine::init(wasm, "_start", vec![]);
     em.exec().await.unwrap();
     assert_eq!(em.value_stack.last().unwrap(), &Value::I64(3));

@@ -4,3 +4,4 @@ pub mod func_instance;
 pub mod block_frame;
 pub mod frame;
 pub mod store;
+pub mod import;

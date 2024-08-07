@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::binary::instructions::Instructions;
-use super::{func_instance::FuncInstance, value::Value};
+use super::{func_instance::{self, FuncInstance}, value::Value};
 
 #[derive(Debug, Default, Clone, PartialEq , Serialize, Deserialize)]
 pub struct Store {
@@ -51,7 +51,9 @@ impl Store {
           panic!("Invalid args length");
         }
       },
-      FuncInstance::External(_func_ext) => panic!("External function cannot be called"),
+      FuncInstance::External(func_instance) => {
+        func_instance.params = args;
+      },
     }
     func_instance
   }

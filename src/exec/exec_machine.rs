@@ -7,6 +7,7 @@ use super::block_frame::BlockFrame;
 use super::store::Store;
 use super::value::Value;
 use super::func_instance::{FuncInstance, InternalFunc};
+use super::import::init_import;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecMachine {
@@ -52,13 +53,32 @@ impl ExecMachine {
   }
 
   pub async fn exec(&mut self) -> Result<&ExecMachine, TrapError> {
+    let mut import = init_import();
     while let Some(func) = self.call_stack.pop() {
       match func {
-        FuncInstance::External(_) => {
-          return Err(TrapError {
-            message: "External function cannot be called".to_string(),
-            vm: self.clone(),
-          });
+        FuncInstance::External(ext) => {
+          match import.get_mut(&ext.env_name) {
+            Some(h) => {
+              match h.get_mut(&ext.name) {
+                Some(func) => {
+                  let ret = func(&mut self.store, ext.params);
+                  self.value_stack.push(ret.unwrap().unwrap());
+                },
+                None => {
+                  return Err(TrapError{
+                    message: "unknown func name".to_string(),
+                    vm: self.clone()
+                  })
+                }
+              }
+            }
+            None => {
+              return Err(TrapError{
+                message: "unknown env name".to_string(),
+                vm: self.clone()
+              })
+            }
+          }
         },
         FuncInstance::Internal(func) => {self.run(func).await?;},
       }
