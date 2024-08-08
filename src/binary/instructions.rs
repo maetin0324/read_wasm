@@ -32,6 +32,8 @@ pub enum Instructions {
   Return,
   Call(u32),
   Drop,
+  I32Store{align: u32, offset: u32},
+  I64Store{align: u32, offset: u32},
   I32Const(i32),
   I32Eqz,
   I32Eq,
@@ -91,6 +93,16 @@ impl Instructions {
         Ok((input, Instructions::Call(func_idx)))
       }
       0x1a => Ok((input, Instructions::Drop)),
+      0x36 => {
+        let (input, align) = leb128_u32(input)?;
+        let (input, offset) = leb128_u32(input)?;
+        Ok((input, Instructions::I32Store { align, offset }))
+      },
+      0x37 => {
+        let (input, align) = leb128_u32(input)?;
+        let (input, offset) = leb128_u32(input)?;
+        Ok((input, Instructions::I64Store { align, offset }))
+      }
       0x41 => {
         let (input, val) = leb128_i32(input)?;
         Ok((input, Instructions::I32Const(val)))

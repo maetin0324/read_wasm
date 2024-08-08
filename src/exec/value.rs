@@ -41,3 +41,21 @@ impl Value {
     input.iter().map(|&x| Value::I64(x)).collect()
   }
 }
+
+impl From<Value> for i32 {
+  fn from(value: Value) -> Self {
+    match value {
+        Value::I32(value) => value,
+        _ => panic!("type mismatch"),
+    }
+  }
+}
+
+impl From<Value> for i64 {
+  fn from(value: Value) -> Self {
+    match value {
+        Value::I64(value) => value,
+        _ => panic!("type mismatch"),
+    }
+  }
+}

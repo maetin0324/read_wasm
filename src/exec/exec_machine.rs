@@ -240,6 +240,50 @@ impl ExecMachine {
       Instructions::Drop => {
         self.value_stack.pop();
       },
+      Instructions::I32Store { align: _, offset } => {
+        let (Some(value), Some(addr)) = (self.value_stack.pop(), self.value_stack.pop()) 
+        else { 
+          return Err(TrapError {
+            message: "I32Store: value stack underflow".to_string(), 
+            vm: self.clone() 
+          })
+        };
+
+        let addr = Into::<i32>::into(addr) as usize;
+        let offset = (*offset) as usize;
+        let at = addr + offset; // 2
+        let end = at + size_of::<i32>();
+
+        let memory = self
+                        .store
+                        .memories
+                        .get_mut(0)
+                        .unwrap();
+        let value: i32 = value.into();
+        memory.memory[at..end].copy_from_slice(&value.to_le_bytes());
+      },
+      Instructions::I64Store { align: _, offset } => {
+        let (Some(value), Some(addr)) = (self.value_stack.pop(), self.value_stack.pop()) 
+        else { 
+          return Err(TrapError {
+            message: "I32Store: value stack underflow".to_string(), 
+            vm: self.clone() 
+          })
+        };
+
+        let addr = Into::<i32>::into(addr) as usize;
+        let offset = (*offset) as usize;
+        let at = addr + offset; // 2
+        let end = at + size_of::<i64>();
+
+        let memory = self
+                        .store
+                        .memories
+                        .get_mut(0)
+                        .unwrap();
+        let value: i64 = value.into();
+        memory.memory[at..end].copy_from_slice(&value.to_le_bytes());
+      },
       Instructions::I32Const(val) => {
         self.value_stack.push(Value::I32(*val));
       },

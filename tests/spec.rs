@@ -154,4 +154,22 @@ use read_wasm::exec::value::Value;
     em.exec().await.unwrap();
     assert_eq!(em.value_stack.last().unwrap(), &Value::I64(5050));
   }
+
+  #[tokio::test]
+  async fn test_i32_store_wasm() {
+    let wasm = create_wasm_from_testsuite("tests/testsuite/i32store.wat");
+    let mut em = ExecMachine::init(wasm, "i32_store",vec![]);
+    em.exec().await.unwrap();
+    let memory = &em.store.memories[0].memory;
+    assert_eq!(memory[0], 42);
+  }
+
+  #[tokio::test]
+  async fn test_i64_store_wasm() {
+    let wasm = create_wasm_from_testsuite("tests/testsuite/i64store.wat");
+    let mut em = ExecMachine::init(wasm, "i64_store",vec![]);
+    em.exec().await.unwrap();
+    let memory = &em.store.memories[0].memory;
+    assert_eq!(memory[0], 42);
+  }
 }
