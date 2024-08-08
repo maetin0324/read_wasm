@@ -1,3 +1,3 @@
 (module
-  (memory 0 10)
+  (memory 1 10)
 )

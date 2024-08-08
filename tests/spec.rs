@@ -9,6 +9,7 @@ use std::{path, vec};
   use read_wasm::binary::wasm::Wasm;
   use read_wasm::exec::exec_machine::ExecMachine;
   use read_wasm::exec::func_instance::FuncInstance;
+use read_wasm::exec::store::Store;
 use read_wasm::exec::value::Value;
 
   fn create_wasm_from_testsuite(path: &str) -> Wasm {
@@ -71,8 +72,16 @@ use read_wasm::exec::value::Value;
     assert!(wasm.code_section.is_none());
 
     let memories = wasm.memory_section.unwrap();
-    assert_eq!(memories[0].min, 0);
+    assert_eq!(memories[0].min, 1);
     assert_eq!(memories[0].max, Some(10));
+  }
+
+  #[test]
+  fn test_init_memory_store() {
+    let wasm = create_wasm_from_testsuite("tests/testsuite/memorysec.wat");
+    let store = Store::new(vec![], &wasm);
+    assert_eq!(store.memories.len(), 1);
+    assert_eq!(store.memories[0].memory.len(), 1 * 65536)
   }
 
   #[tokio::test]

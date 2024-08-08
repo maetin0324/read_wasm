@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::binary::instructions::Instructions;
+use crate::binary::{instructions::Instructions, memory_sec, wasm::Wasm};
 use super::{func_instance::FuncInstance, value::Value};
 
 pub const PAGE_SIZE: u32 = 65536; // 64Ki
@@ -13,15 +13,27 @@ pub struct Store {
 
 #[derive(Debug, Default, Clone, PartialEq , Serialize, Deserialize)]
 pub struct MemoryInst {
-  memory: Vec<u8>,
-  max: Option<u32>,
+  pub memory: Vec<u8>,
+  pub max: Option<u32>,
 }
 
 impl Store {
-  pub fn new(funcs: Vec<FuncInstance>) -> Store {
+  pub fn new(funcs: Vec<FuncInstance>, wasm: &Wasm) -> Store {
+    let mut memories = Vec::new();
+    if let Some(ref memory_sec) = wasm.memory_section {
+      for memory in memory_sec {
+        let min = memory.min * PAGE_SIZE;
+        let memory_inst = MemoryInst {
+          memory: vec![0; min as usize],
+          max: memory.max,
+        };
+        memories.push(memory_inst);
+      }
+    }
+
     Store {
       funcs,
-      memories: Vec::new(),
+      memories,
     }
   }
 

@@ -40,7 +40,7 @@ impl ExecMachine {
   pub fn init(wasm: Wasm, entry_point:&str, locals: Vec<Value>) -> ExecMachine {
     let mut vm = ExecMachine::new();
     let func_instances = FuncInstance::new(&wasm);
-    vm.store = Store::new(func_instances.clone());
+    vm.store = Store::new(func_instances.clone(), &wasm);
     vm.call_stack.push(vm.store.call_func_by_name(entry_point, locals));
     vm
   }
