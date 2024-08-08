@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::binary::{instructions::Instructions, memory_sec, wasm::Wasm};
+use crate::binary::{instructions::Instructions, wasm::Wasm};
 use super::{func_instance::FuncInstance, value::Value};
 
 pub const PAGE_SIZE: u32 = 65536; // 64Ki

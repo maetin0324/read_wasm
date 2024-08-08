@@ -77,6 +77,24 @@ use read_wasm::exec::value::Value;
   }
 
   #[test]
+  fn test_parse_datasec_wasm() {
+    let wasm = create_wasm_from_testsuite("tests/testsuite/datasec.wat");
+    assert!(wasm.type_section.is_none());
+    assert!(wasm.import_section.is_none());
+    assert!(wasm.function_section.is_none());
+    assert!(wasm.memory_section.is_some());
+    assert!(wasm.export_section.is_none());
+    assert!(wasm.code_section.is_none());
+    assert!(wasm.data_section.is_some());
+
+    let data = wasm.data_section.unwrap();
+    assert_eq!(data.len(), 1);
+    assert_eq!(data[0].memory_index, 0);
+    assert_eq!(data[0].offset, 1);
+    assert_eq!(&data[0].init, &[0x61, 0x62, 0x63, 0x64])
+  }
+
+  #[test]
   fn test_init_memory_store() {
     let wasm = create_wasm_from_testsuite("tests/testsuite/memorysec.wat");
     let store = Store::new(vec![], &wasm);

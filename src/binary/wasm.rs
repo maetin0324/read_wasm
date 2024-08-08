@@ -3,6 +3,7 @@ use nom::bytes::complete::{tag, take};
 use nom::IResult;
 use nom_leb128::leb128_u32;
 
+use super::data_sec::Data;
 use super::memory_sec::MemorySec;
 use super::section::Section;
 use super::type_sec::FuncType;
@@ -20,6 +21,7 @@ pub struct Wasm {
   pub memory_section: Option<Vec<MemorySec>>,
   pub export_section: Option<Vec<ExportFunc>>,
   pub code_section: Option<Vec<Code>>,
+  pub data_section: Option<Vec<Data>>
 }
 
 const MAGIC: &[u8; 4] = &[0x00, 0x61, 0x73, 0x6d];
@@ -40,6 +42,7 @@ impl Wasm {
       memory_section: None,
       export_section: None,
       code_section: None,
+      data_section: None,
     };
 
     loop {
@@ -71,6 +74,9 @@ impl Wasm {
         },
         Section::CodeSection(codes) => {
             wasm.code_section = Some(codes);
+        },
+        Section::DataSection(data) => {
+          wasm.data_section = Some(data);
         },
         _ => {},
       }

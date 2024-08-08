@@ -1,3 +1,4 @@
+use super::data_sec::Data;
 use super::memory_sec::MemorySec;
 use super::type_sec::FuncType;
 use super::import_sec::Import;
@@ -19,7 +20,7 @@ pub enum Section {
   StartSection,
   ElementSection,
   CodeSection(Vec<Code>),
-  DataSection,
+  DataSection(Vec<Data>),
   DataCountSection,
 }
 
@@ -86,7 +87,11 @@ impl Section {
         Section::CodeSection(codes)
       },
       11 => {
-        Section::DataSection
+        let data = match Data::parse(section_data) {
+          Ok((_, data)) => data,
+          Err(e) => panic!("Error: {:#x?}", e)
+        };
+        Section::DataSection(data)
       },
       12 => {
         Section::DataCountSection
