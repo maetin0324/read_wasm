@@ -99,7 +99,7 @@ use read_wasm::exec::value::Value;
     let wasm = create_wasm_from_testsuite("tests/testsuite/memorysec.wat");
     let store = Store::new(vec![], &wasm);
     assert_eq!(store.memories.len(), 1);
-    assert_eq!(store.memories[0].memory.len(), 1 * 65536)
+    assert_eq!(store.memories[0].memory.len(), 65536)
   }
 
   #[test]
