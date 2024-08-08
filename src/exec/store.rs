@@ -31,6 +31,22 @@ impl Store {
       }
     }
 
+    if let Some(ref data) = wasm.data_section {
+      for data in data {
+        let memory = memories
+          .get_mut(data.memory_index as usize)
+          .unwrap();
+        let offset = data.offset as usize;
+        let init = &data.init;
+
+        if offset + init.len() > memory.memory.len() {
+            panic!("data is too large to fit in memory");
+        }
+        memory.memory[offset..offset + init.len()].copy_from_slice(init);
+      }
+      
+    }
+
     Store {
       funcs,
       memories,

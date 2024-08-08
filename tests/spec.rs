@@ -102,6 +102,16 @@ use read_wasm::exec::value::Value;
     assert_eq!(store.memories[0].memory.len(), 1 * 65536)
   }
 
+  #[test]
+  fn test_init_data() {
+    let wasm = create_wasm_from_testsuite("tests/testsuite/data.wat");
+    let store = Store::new(vec![], &wasm);
+    assert_eq!(store.memories.len(), 1);
+    assert_eq!(store.memories[0].memory.len(), 65536);
+    assert_eq!(&store.memories[0].memory[0..5], b"hello");
+    assert_eq!(&store.memories[0].memory[5..10], b"world");
+  }
+
   #[tokio::test]
   async fn test_instantiate_with_import() {
     let wasm = create_wasm_from_testsuite("tests/testsuite/func.wat");
