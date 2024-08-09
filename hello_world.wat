@@ -21,4 +21,5 @@
     )
   )
   (export "_start" (func $hello_world))
+  (export "memory" (memory 0))
 )
