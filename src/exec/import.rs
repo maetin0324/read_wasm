@@ -1,5 +1,5 @@
 use anyhow::{Result, Ok};
-use std::{collections::HashMap, io::Write};
+use std::{collections::HashMap, io::Write, sync::Arc};
 use super::{store::Store, value::Value, wasi::WasiSnapshotPreview1};
 
 pub type ImportFunc = Box<dyn FnMut(&mut Store, Vec<Value>) -> Result<Option<Value>>>;
@@ -37,14 +37,17 @@ pub fn fd_write(store: &mut Store, args: Vec<Value>) -> Result<Option<Value>> {
   let mut wasi = WasiSnapshotPreview1::new();
 
   let file = wasi
-  .file_table
-  .get_mut(fd as usize)
-  .ok_or(anyhow::anyhow!("not found fd"))?;
+    .file_table
+    .get_mut(fd as usize)
+    .ok_or(anyhow::anyhow!("not found fd"))?;
 
-let memory = store
-  .memories
-  .get_mut(0)
-  .ok_or(anyhow::anyhow!("not found memory"))?;
+  let file = Arc::clone(file);
+  let mut file = file.lock().expect("cannot lock file");
+
+  let memory = store
+    .memories
+    .get_mut(0)
+    .ok_or(anyhow::anyhow!("not found memory"))?;
 
   let mut nwritten = 0;
 

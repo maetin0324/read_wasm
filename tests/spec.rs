@@ -173,16 +173,16 @@ use read_wasm::exec::value::Value;
     assert_eq!(memory[0], 42);
   }
 
-  // #[tokio::test]
-  // async fn test_hello_world_wasm() {
-  //   let wasm = create_wasm_from_testsuite("tests/testsuite/hello_world.wat");
-  //   let mut em = ExecMachine::init(wasm, "_start", vec![]);
-  //   em.exec().await.unwrap();
-  //   let memory = &em.store.memories[0].memory;
-  //   let hello = &memory[0..5];
-  //   let world = &memory[5..10];
-  //   assert_eq!(hello, b"hello");
-  //   assert_eq!(world, b"world");
-  //   assert_eq!(em.value_stack.last().unwrap(), &Value::I32(0));
-  // }
+  #[tokio::test]
+  async fn test_hello_world_wasm() {
+    let wasm = create_wasm_from_testsuite("tests/testsuite/hello_world.wat");
+    let mut em = ExecMachine::init(wasm, "_start", vec![]);
+    em.exec().await.unwrap();
+    let memory = &em.store.memories[0].memory;
+    let hello = &memory[0..6];
+    let world = &memory[6..13];
+    assert_eq!(hello, b"Hello,");
+    assert_eq!(world, b" World!");
+    assert_eq!(em.value_stack.last().unwrap(), &Value::I32(0));
+  }
 }
