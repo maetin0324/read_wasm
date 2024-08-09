@@ -32,7 +32,6 @@ impl Code {
       let mut locals: Vec<LocalVar> = Vec::new();
 
       (input, size) = leb128_u32(input)?;
-      println!("size: {}", size);
 
       (input, code_body) = take(size as usize)(input)?;
 

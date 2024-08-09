@@ -5,3 +5,4 @@ pub mod block_frame;
 pub mod frame;
 pub mod store;
 pub mod import;
+pub mod wasi;
