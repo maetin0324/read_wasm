@@ -48,15 +48,15 @@ let memory = store
 
   let mut nwritten = 0;
 
-  for _ in 0..iovs_len { // 5
-    let start = memory_read(&memory.memory, iovs)? as usize; // 1
+  for _ in 0..iovs_len {
+    let start = memory_read(&memory.memory, iovs)? as usize;
     iovs += 4;
 
-    let len: i32 = memory_read(&memory.memory, iovs)?; // 2
+    let len: i32 = memory_read(&memory.memory, iovs)?;
     iovs += 4;
 
-    let end = start + len as usize; // 3
-    nwritten += file.write(&memory.memory[start..end])?; // 4
+    let end = start + len as usize;
+    nwritten += file.write(&memory.memory[start..end])?;
   }
 
   memory_write(&mut memory.memory, rp, &nwritten.to_le_bytes())?;
