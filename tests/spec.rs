@@ -96,6 +96,23 @@ mod tests {
   }
 
   #[test]
+  fn test_parse_globalsec_wasm() {
+    let wasm = create_wasm_from_testsuite("tests/testsuite/globalsec.wat");
+    assert!(wasm.type_section.is_none());
+    assert!(wasm.import_section.is_none());
+    assert!(wasm.function_section.is_none());
+    assert!(wasm.memory_section.is_none());
+    assert!(wasm.export_section.is_none());
+    assert!(wasm.code_section.is_none());
+    assert!(wasm.global_section.is_some());
+
+    let globals = wasm.global_section.unwrap();
+    assert_eq!(globals.len(), 1);
+    assert_eq!(globals[0].valtype, binary::value_type::ValueType::I32);
+    assert_eq!(globals[0].mutability, false);
+  }
+
+  #[test]
   fn test_init_memory_store() {
     let wasm = create_wasm_from_testsuite("tests/testsuite/memorysec.wat");
     let store = Store::new(vec![], &wasm);

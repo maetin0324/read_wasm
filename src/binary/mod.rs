@@ -4,6 +4,7 @@ pub mod type_sec;
 pub mod import_sec;
 pub mod func_sec;
 pub mod memory_sec;
+pub mod global_sec;
 pub mod export_sec;
 pub mod code_sec;
 pub mod data_sec;

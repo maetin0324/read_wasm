@@ -4,6 +4,7 @@ use nom::IResult;
 use nom_leb128::leb128_u32;
 
 use super::data_sec::Data;
+use super::global_sec::GlobalVar;
 use super::memory_sec::MemorySec;
 use super::section::Section;
 use super::type_sec::FuncType;
@@ -19,6 +20,7 @@ pub struct Wasm {
   pub import_section: Option<Vec<Import>>,
   pub function_section: Option<Vec<Func>>,
   pub memory_section: Option<Vec<MemorySec>>,
+  pub global_section: Option<Vec<GlobalVar>>,
   pub export_section: Option<Vec<ExportFunc>>,
   pub code_section: Option<Vec<Code>>,
   pub data_section: Option<Vec<Data>>
@@ -40,6 +42,7 @@ impl Wasm {
       import_section: None,
       function_section: None,
       memory_section: None,
+      global_section: None,
       export_section: None,
       code_section: None,
       data_section: None,
@@ -68,6 +71,9 @@ impl Wasm {
         },
         Section::MemorySection(memories) => {
           wasm.memory_section = Some(memories);
+        },
+        Section::GlobalSection(globals) => {
+          wasm.global_section = Some(globals);
         },
         Section::ExportSection(export_funcs) => {
             wasm.export_section = Some(export_funcs);
