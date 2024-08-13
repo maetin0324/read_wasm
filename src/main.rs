@@ -4,6 +4,7 @@ use clap::{command, Parser};
 use read_wasm::binary::wasm::Wasm;
 use read_wasm::exec::exec_machine::ExecMachine;
 use read_wasm::exec::value::Value;
+use read_wasm::exec::wasi::WasiSnapshotPreview1;
 
 #[derive(Parser, Debug)]
 #[command(author, about)]
@@ -54,7 +55,8 @@ async fn main() {
       let locals = Value::parse_from_i64_vec(locals);
 
       let mut machine = ExecMachine::init(wasm, &entry_point, locals);
-      match machine.exec().await {
+      let mut wasi = WasiSnapshotPreview1::new();
+      match machine.exec(&mut wasi).await {
         Ok(_) => { println!("return {:?}", machine.value_stack.last()); },
         Err(e) => {
           println!("ExecuteError: {:?}", e.message);
@@ -67,8 +69,8 @@ async fn main() {
       let mut se  = Vec::new();
       file.read_to_end(&mut se).unwrap();
       let mut machine = ExecMachine::deserialize(&se).await.unwrap();
-      // println!("{:#?}", machine);
-      match machine.exec().await {
+      let mut wasi = WasiSnapshotPreview1::new();
+      match machine.exec(&mut wasi).await {
         Ok(_) => { println!("return {:?}", machine.value_stack.last()); },
         Err(e) => {
           println!("ExecuteError: {:?}", e.message);

@@ -2,6 +2,7 @@ use async_ucx::ucp::*;
 use std::mem::MaybeUninit;
 
 use crate::exec::exec_machine::ExecMachine;
+use crate::exec::wasi::WasiSnapshotPreview1;
 
 pub async fn server_start() -> anyhow::Result<()> {
     let context = Context::new()?;
@@ -12,9 +13,10 @@ pub async fn server_start() -> anyhow::Result<()> {
     let mut listener = worker.create_listener("0.0.0.0:10000".parse().unwrap())?;
     println!("Listening on {}", listener.socket_addr().unwrap());
     for i in 0u8.. {
+      println!("waiting for connection: {}", i);
       let conn = listener.next().await;
       conn.remote_addr().unwrap();
-      let ep = worker.accept(conn).await?;
+      let ep = worker.accept(conn).await.unwrap();
 
       println!("accept: {}", i);
       ep.tag_send(100, &[i]).await.unwrap();
@@ -32,11 +34,11 @@ pub async fn server_start() -> anyhow::Result<()> {
           let buf = unsafe {
             buf.iter().map(|x| x.assume_init()).collect::<Vec<u8>>()
           };
-          println!("len: {}, buf: {:?}", len, buf);
-          ep.tag_send(tag, &[0]).await.unwrap();
+          // println!("len: {}, buf: {:?}", len, buf);
+          ep.tag_send(tag, &[i]).await.unwrap();
           let mut machine = ExecMachine::deserialize(&buf).await.unwrap();
-          // println!("{:#?}", machine);
-          match machine.exec().await {
+          let mut wasi = WasiSnapshotPreview1::new();
+          match machine.exec(&mut wasi).await {
             std::result::Result::Ok(_) => { println!("return {:?}", machine.value_stack.last()); },
             Err(e) => {
               println!("ExecuteError: {:?}", e.message);

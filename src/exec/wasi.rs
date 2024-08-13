@@ -1,26 +1,28 @@
-use std::fmt::Write;
-use std::io::{Read, Seek};
 use std::{fs::File, os::fd::FromRawFd};
-use std::sync::{Arc, Mutex};
-
-pub trait ReadWrite: Read + Write + Seek + Send + Sync + 'static {}
-
-impl<IO: Read + Write + Seek + Send + Sync + 'static> ReadWrite for IO {}
 
 #[derive(Default)]
 pub struct WasiSnapshotPreview1 {
-    pub file_table: Vec<Arc<Mutex<Box<File>>>>,
+    pub file_table: Vec<Box<File>>,
+    pub file_path: Vec<Option<String>>,
 }
 
 impl WasiSnapshotPreview1 {
     pub fn new() -> Self {
+        let current_dir = File::open(".").unwrap();
         unsafe {
             Self {
                 file_table: vec![
-                    Arc::new(Mutex::new(Box::new(File::from_raw_fd(0)))),
-                    Arc::new(Mutex::new(Box::new(File::from_raw_fd(1)))),
-                    Arc::new(Mutex::new(Box::new(File::from_raw_fd(2)))),
+                    Box::new(File::from_raw_fd(0)),
+                    Box::new(File::from_raw_fd(1)),
+                    Box::new(File::from_raw_fd(2)),
+                    Box::new(current_dir),
                 ],
+                file_path: vec![
+                    None,
+                    None,
+                    None,
+                    Some(".".to_string()),
+                ]
             }
         }
     }

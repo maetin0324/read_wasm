@@ -18,10 +18,12 @@ pub async fn client(server_addr: String, data: Vec<u8>) -> Result<()> {
   let len = data.len().to_le_bytes();
   endpoint.tag_send(tag, &len).await?;
   endpoint.tag_send(tag, &data).await?;
+  let mut ret = [MaybeUninit::uninit()];
   endpoint
     .worker()
-    .tag_recv(tag, &mut [MaybeUninit::uninit()])
+    .tag_recv(tag, &mut ret)
     .await?;
+  // let ret = unsafe { ret[0].assume_init() };
   Ok(())
 }
 

@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use anyhow::{anyhow, Result};
 use crate::binary::{instructions::Instructions, wasm::Wasm};
 use super::{func_instance::FuncInstance, value::Value};
 
@@ -107,4 +108,17 @@ impl Store {
     };
     self.call_func(func_idx, args)
   }
+}
+
+impl MemoryInst {
+  pub fn store(&mut self, offset: u32, index: u32, size: u32, value: &[u8]) -> Result<()> {
+    let addr = offset + index;
+    let addr = addr as usize;
+    let size = size as usize;
+    if addr + size > self.memory.len() {
+        return Err(anyhow!("Out of memory"));
+    }
+    self.memory[addr..addr + size].copy_from_slice(&value[0..size]);
+    Ok(())
+}
 }

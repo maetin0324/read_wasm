@@ -8,6 +8,7 @@ use super::store::Store;
 use super::value::Value;
 use super::func_instance::{FuncInstance, InternalFunc};
 use super::import::init_import;
+use super::wasi::WasiSnapshotPreview1;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecMachine {
@@ -52,7 +53,7 @@ impl ExecMachine {
     }
   }
 
-  pub async fn exec(&mut self) -> Result<&ExecMachine, TrapError> {
+  pub async fn exec(&mut self, wasi: &mut WasiSnapshotPreview1) -> Result<&ExecMachine, TrapError> {
     let mut import = init_import();
     while let Some(func) = self.call_stack.pop() {
       match func {
@@ -61,7 +62,7 @@ impl ExecMachine {
             Some(h) => {
               match h.get_mut(&ext.name) {
                 Some(func) => {
-                  let ret = func(&mut self.store, ext.params);
+                  let ret = func(wasi, &mut self.store, ext.params);
                   self.value_stack.push(ret.unwrap().unwrap());
                 },
                 None => {
