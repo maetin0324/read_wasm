@@ -47,6 +47,8 @@ pub enum Instructions {
   LocalGet(u32),
   LocalSet(u32),
   LocalTee(u32),
+  GlobalGet(u32),
+  GlobalSet(u32),
 }
 
 impl Instructions {
@@ -130,6 +132,14 @@ impl Instructions {
       0x22 => {
         let (input, val) = leb128_u32(input)?;
         Ok((input, Instructions::LocalTee(val)))
+      },
+      0x23 => {
+        let (input, val) = leb128_u32(input)?;
+        Ok((input, Instructions::GlobalGet(val)))
+      },
+      0x24 => {
+        let (input, val) = leb128_u32(input)?;
+        Ok((input, Instructions::GlobalSet(val)))
       },
       _ => {
         panic!("Unknown opcode: {:#x?}", opcode);

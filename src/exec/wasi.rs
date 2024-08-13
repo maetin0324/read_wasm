@@ -1,8 +1,8 @@
-use std::{fs::File, os::fd::FromRawFd};
+use std::{fs::File, mem::ManuallyDrop, os::fd::FromRawFd};
 
 #[derive(Default)]
 pub struct WasiSnapshotPreview1 {
-    pub file_table: Vec<Option<Box<File>>>,
+    pub file_table: Vec<Option<Box<ManuallyDrop<File>>>>,
     pub file_path: Vec<Option<String>>,
 }
 
@@ -12,10 +12,10 @@ impl WasiSnapshotPreview1 {
         unsafe {
             Self {
                 file_table: vec![
-                    Some(Box::new(File::from_raw_fd(0))),
-                    Some(Box::new(File::from_raw_fd(1))),
-                    Some(Box::new(File::from_raw_fd(2))),
-                    Some(Box::new(current_dir)),
+                    Some(Box::new(ManuallyDrop::new(File::from_raw_fd(0)))),
+                    Some(Box::new(ManuallyDrop::new(File::from_raw_fd(1)))),
+                    Some(Box::new(ManuallyDrop::new(File::from_raw_fd(2)))),
+                    Some(Box::new(ManuallyDrop::new(current_dir))),
                 ],
                 file_path: vec![
                     None,

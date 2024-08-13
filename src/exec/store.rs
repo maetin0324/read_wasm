@@ -10,12 +10,19 @@ pub const PAGE_SIZE: usize = 65536; // 64Ki
 pub struct Store {
   pub funcs: Vec<FuncInstance>,
   pub memories: Vec<MemoryInst>,
+  pub globals: Vec<GlobalValue>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq , Serialize, Deserialize)]
 pub struct MemoryInst {
   pub memory: Vec<u8>,
   pub max: Option<u32>,
+}
+
+#[derive(Debug, Default, Clone, PartialEq , Serialize, Deserialize)]
+pub struct GlobalValue {
+  pub value: Value,
+  pub mutability: bool,
 }
 
 impl Store {
@@ -44,13 +51,28 @@ impl Store {
             panic!("data is too large to fit in memory");
         }
         memory.memory[offset..offset + init.len()].copy_from_slice(init);
+      }     
+    }
+
+    let mut globals = Vec::new();
+    if let Some(ref global_sec) = wasm.global_section {
+      for global in global_sec {
+        let value = match global.init[0] {
+          Instructions::I32Const(v) => Value::I32(v),
+          Instructions::I64Const(v) => Value::I64(v),
+          _ => panic!("Invalid global init value"),
+        };
+        globals.push(GlobalValue {
+          value,
+          mutability: global.mutability,
+        });
       }
-      
     }
 
     Store {
       funcs,
       memories,
+      globals,
     }
   }
 

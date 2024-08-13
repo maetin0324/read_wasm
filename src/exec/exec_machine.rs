@@ -511,6 +511,54 @@ impl ExecMachine {
         }
         func.locals[*idx as usize] = val;
       },
+      Instructions::GlobalGet(idx) => {
+        let val = match self.store.globals.get(*idx as usize) {
+          Some(v) => v.value.clone(),
+          None => {
+            return Err(TrapError {
+              message: "GlobalGet: global not found".to_string(),
+              vm: self.clone(),
+            });
+          }
+        };
+        self.value_stack.push(val);
+      },
+      Instructions::GlobalSet(idx) => {
+        let val = match self.value_stack.pop() {
+          Some(v) => v,
+          None => {
+            return Err(TrapError {
+              message: "GlobalSet: value stack underflow".to_string(),
+              vm: self.clone(),
+            });
+          }
+        };
+        
+        let global = match self.store.globals.get_mut(*idx as usize) {
+          Some(g) => g,
+          None => {
+            return Err(TrapError {
+              message: "GlobalSet: global not found".to_string(),
+              vm: self.clone(),
+            });
+          }
+        };
+
+        if !global.mutability {
+          return Err(TrapError {
+            message: "GlobalSet: global is immutable".to_string(),
+            vm: self.clone(),
+          });
+        };
+
+        if !Value::match_value(&val, &global.value) {
+          return Err(TrapError {
+            message: "GlobalSet: invalid value type".to_string(),
+            vm: self.clone(),
+          });
+        }
+        global.value = val;
+      }
       _ => panic!("Unknown instruction: {:?}", instr),
     }
 

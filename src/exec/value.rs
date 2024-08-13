@@ -9,6 +9,12 @@ pub enum Value {
   F64(f64),
 }
 
+impl Default for Value {
+  fn default() -> Self {
+    Value::I32(0)
+  }
+}
+
 impl Value {
   pub fn eq_for_value_type(&self, other: &ValueType) -> bool {
     matches!((self, other), 
