@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use anyhow::{anyhow, Result, Ok};
-use std::{collections::HashMap, env, fs::OpenOptions, io::{Read, Write}, mem::ManuallyDrop, path::Path};
+use std::{collections::HashMap, env, fs::OpenOptions, io::{Read, Seek, SeekFrom, Write}, mem::ManuallyDrop, path::Path};
 use super::{store::{MemoryInst, Store}, value::Value, wasi::WasiSnapshotPreview1};
 
 pub type ImportFunc = Box<dyn FnMut(&mut WasiSnapshotPreview1, &mut Store, Vec<Value>) -> Result<Option<Value>>>;
@@ -27,6 +27,10 @@ pub fn init_import() -> ImportTable {
   wasi_hash.insert("fd_prestat_dir_name".to_owned(), Box::new(fd_prestat_dir_name));
   wasi_hash.insert("fd_close".to_owned(), Box::new(fd_close));
   wasi_hash.insert("fd_read".to_owned(), Box::new(fd_read));
+  wasi_hash.insert("environ_sizes_get".to_owned(), Box::new(environ_sizes_get));
+  wasi_hash.insert("environ_get".to_owned(), Box::new(environ_get));
+  wasi_hash.insert("path_open".to_owned(), Box::new(path_open));
+  wasi_hash.insert("fd_seek".to_owned(), Box::new(fd_seek));
 
 
   import.insert("wasi_snapshot_preview1".to_owned(), wasi_hash);
@@ -255,6 +259,30 @@ fn path_open(wasi: &mut WasiSnapshotPreview1, store: &mut Store, args: Vec<Value
   store
     .memories[0]
     .store(opened_fd_offset, 0, 4, &opened_fd.to_le_bytes())?;
+
+  Ok(Some(Value::I32(0)))
+}
+
+fn fd_seek(wasi: &mut WasiSnapshotPreview1, store: &mut Store, args: Vec<Value>) -> Result<Option<Value>> {
+  let fd: i32 = args[0].clone().into();
+  let offset = args[1].clone().into();
+  let whence = args[2].clone().into();
+  let new_offset_offset: i32 = args[3].clone().into();
+
+  let Some(Some(file)) = wasi.file_table.get_mut(fd as usize) else {
+    return Ok(Some(ERRNO_BADF.into()));
+  };
+
+  let new_offset = match whence {
+    0 => file.seek(SeekFrom::Start(offset as u64)),
+    1 => file.seek(SeekFrom::Current(offset)),
+    2 => file.seek(SeekFrom::End(offset)),
+    _ => return Ok(Some(ERRNO_INVAL.into())),
+  }?;
+
+  store
+    .memories[0]
+    .store(new_offset_offset as u32, 0, 8, &new_offset.to_le_bytes())?;
 
   Ok(Some(Value::I32(0)))
 }
