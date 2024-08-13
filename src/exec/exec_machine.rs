@@ -252,7 +252,7 @@ impl ExecMachine {
         let addr = Into::<i32>::into(addr) as usize;
         let offset = (*offset) as usize;
         let at = addr + offset; // 2
-        let end = at + size_of::<i32>();
+        let end = at + std::mem::size_of::<i32>();
 
         let memory = self
                         .store
@@ -274,7 +274,7 @@ impl ExecMachine {
         let addr = Into::<i32>::into(addr) as usize;
         let offset = (*offset) as usize;
         let at = addr + offset; // 2
-        let end = at + size_of::<i64>();
+        let end = at + std::mem::size_of::<i64>();
 
         let memory = self
                         .store
