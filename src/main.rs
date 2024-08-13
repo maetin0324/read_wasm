@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{BufReader, Read};
+use std::io::{BufReader, Read, Write};
 use clap::{command, Parser};
 use read_wasm::binary::wasm::Wasm;
 use read_wasm::exec::exec_machine::ExecMachine;
@@ -35,7 +35,13 @@ enum SubCommand {
     #[clap(short, long)]
     locals: Vec<i64>,
   },
+  Server,
+  Client {
+    server_addr: String,
+    filename: String,
+  },
 }
+
 #[tokio::main]
 async fn main() {
   let args = Cli::parse();
@@ -61,7 +67,7 @@ async fn main() {
       let mut se  = Vec::new();
       file.read_to_end(&mut se).unwrap();
       let mut machine = ExecMachine::deserialize(&se).await.unwrap();
-      println!("{:#?}", machine);
+      // println!("{:#?}", machine);
       match machine.exec().await {
         Ok(_) => { println!("return {:?}", machine.value_stack.last()); },
         Err(e) => {
@@ -69,12 +75,6 @@ async fn main() {
           println!("VM: {:#?}", e.vm);
         },
       }
-      // let byte = unsafe {any_as_u8_slice(&machine)};
-      // println!("{:?}", byte.len());
-      // let (_head, body, _tail) = unsafe { byte.align_to::<ExecMachine>()};
-      // let machine = body[0].clone();
-
-      
     }
     SubCommand::Serialize { filename, entry_point, locals } => {
       let file = File::open(filename).unwrap();
@@ -82,7 +82,23 @@ async fn main() {
       let locals = Value::parse_from_i64_vec(locals);
 
       let machine = ExecMachine::init(wasm, &entry_point, locals);
-      machine.serialize_vm();
+      let data = machine.serialize_vm();
+      File::create("vm.serialized").unwrap().write_all(&data).unwrap();
+    }
+    SubCommand::Server => {
+      let local = tokio::task::LocalSet::new();
+      local.run_until(
+      read_wasm::server::server::server_start()
+      ).await.unwrap();
+    }
+    SubCommand::Client { server_addr, filename } => {
+      let mut file = File::open(filename).unwrap();
+      let mut data  = Vec::new();
+      file.read_to_end(&mut data).unwrap();
+      let local = tokio::task::LocalSet::new();
+      local.run_until(
+        read_wasm::server::client::client(server_addr, data)
+      ).await.unwrap();
     }
   }
 }
