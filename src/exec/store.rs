@@ -136,7 +136,7 @@ impl MemoryInst {
   }
   pub fn grow(&mut self, grow_size: usize) -> Value {
       let current_size = self.memory.len() / PAGE_SIZE;
-      let new_size = current_size + grow_size as usize;
+      let new_size = current_size + grow_size;
       let max = self.max.unwrap_or(u32::MAX / PAGE_SIZE as u32);
       if new_size > max as usize {
           Value::I32(-1)

@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 
 use anyhow::{anyhow, Result, Ok};
-use std::{collections::HashMap, io::{Read, Write}, sync::Arc};
-use super::{store::{MemoryInst, Store}, value::Value, wasi::{self, WasiSnapshotPreview1}};
+use std::{collections::HashMap, io::{Read, Write}};
+use super::{store::{MemoryInst, Store}, value::Value, wasi::WasiSnapshotPreview1};
 
 pub type ImportFunc = Box<dyn FnMut(&mut WasiSnapshotPreview1, &mut Store, Vec<Value>) -> Result<Option<Value>>>;
 pub type ImportTable = HashMap<String, HashMap<String, ImportFunc>>;
@@ -102,7 +102,7 @@ fn fd_prestat_get(wasi: &mut WasiSnapshotPreview1, store: &mut Store, args: Vec<
   let Some(Some(path)) = wasi.file_path.get(fd as usize) else {
       return Ok(Some(ERRNO_BADF.into()));
   };
-  store.memories[0].store(buf as u32, 0, 1, &[0])?;
+  store.memories[0].store(buf, 0, 1, &[0])?;
   store
       .memories[0]
       .store(buf, 4, 4, &(path.len() as i32).to_le_bytes())?;
@@ -118,7 +118,7 @@ fn fd_prestat_dir_name(
   let fd = args[0] as usize;
   let buf = args[1] as usize;
 
-  let Some(Some(path)) = wasi.file_path.get(fd as usize) else {
+  let Some(Some(path)) = wasi.file_path.get(fd) else {
       return Ok(Some(ERRNO_BADF.into()));
   };
   for i in 0..path.len() {
@@ -131,8 +131,8 @@ fn fd_close(wasi: &mut WasiSnapshotPreview1, _store: &mut Store, args: Vec<Value
   let args: Vec<i32> = args.into_iter().map(Into::into).collect();
   let fd = args[0] as usize;
   if fd >= 3 {
-      wasi.file_table[fd as usize] = None;
-      wasi.file_path[fd as usize] = None;
+      wasi.file_table[fd] = None;
+      wasi.file_path[fd] = None;
   }
   Ok(Some(Value::I32(0)))
 }
