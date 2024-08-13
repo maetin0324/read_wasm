@@ -4,7 +4,7 @@ use anyhow::{anyhow, Result};
 use crate::binary::{instructions::Instructions, wasm::Wasm};
 use super::{func_instance::FuncInstance, value::Value};
 
-pub const PAGE_SIZE: u32 = 65536; // 64Ki
+pub const PAGE_SIZE: usize = 65536; // 64Ki
 
 #[derive(Debug, Default, Clone, PartialEq , Serialize, Deserialize)]
 pub struct Store {
@@ -23,7 +23,7 @@ impl Store {
     let mut memories = Vec::new();
     if let Some(ref memory_sec) = wasm.memory_section {
       for memory in memory_sec {
-        let min = memory.min * PAGE_SIZE;
+        let min = memory.min * PAGE_SIZE as u32;
         let memory_inst = MemoryInst {
           memory: vec![0; min as usize],
           max: memory.max,
@@ -120,5 +120,48 @@ impl MemoryInst {
     }
     self.memory[addr..addr + size].copy_from_slice(&value[0..size]);
     Ok(())
-}
+  }
+
+  pub fn load(&self, offset: u32, index: u32, size: u32) -> Result<&[u8]> {
+    let addr = offset + index;
+    let addr = addr as usize;
+    let size = size as usize;
+    if addr + size > self.memory.len() {
+        return Err(anyhow!("Out of memory"));
+    }
+    Ok(&self.memory[addr..addr + size])
+  }
+  pub fn size(&self) -> Value {
+      Value::I32((self.memory.len() / PAGE_SIZE) as i32)
+  }
+  pub fn grow(&mut self, grow_size: usize) -> Value {
+      let current_size = self.memory.len() / PAGE_SIZE;
+      let new_size = current_size + grow_size as usize;
+      let max = self.max.unwrap_or(u32::MAX / PAGE_SIZE as u32);
+      if new_size > max as usize {
+          Value::I32(-1)
+      } else {
+          self.memory.resize(new_size * PAGE_SIZE, 0);
+          Value::I32(current_size as i32)
+      }
+  }
+  pub fn fill(&mut self, addr: usize, size: usize, value: u8) -> Result<()> {
+      if addr + size > self.memory.len() {
+          return Err(anyhow!("Out of memory"));
+      }
+      if size != 0 {
+          self.memory[addr..addr + size].fill(value);
+      }
+      Ok(())
+  }
+  pub fn copy(&mut self, src: usize, dest: usize, size: usize) -> Result<()> {
+      if src + size > self.memory.len() || dest + size > self.memory.len() {
+          return Err(anyhow!("Out of memory"));
+      }
+      if size != 0 {
+          let src_memory = self.memory[src..src + size].to_owned();
+          self.memory[dest..dest + size].copy_from_slice(&src_memory);
+      }
+      Ok(())
+  }
 }
