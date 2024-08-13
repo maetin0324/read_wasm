@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use anyhow::{anyhow, Result, Ok};
-use std::{collections::HashMap, io::{Read, Write}};
+use std::{collections::HashMap, env, fs::OpenOptions, io::{Read, Write}, mem::ManuallyDrop, path::Path};
 use super::{store::{MemoryInst, Store}, value::Value, wasi::WasiSnapshotPreview1};
 
 pub type ImportFunc = Box<dyn FnMut(&mut WasiSnapshotPreview1, &mut Store, Vec<Value>) -> Result<Option<Value>>>;
@@ -164,6 +164,97 @@ fn fd_read(wasi: &mut WasiSnapshotPreview1, store: &mut Store, args: Vec<Value>)
           .read(&mut memory.memory[start..end])?;
   }
   memory.store(rp as u32, 0, 4, &nread.to_le_bytes())?;
+
+  Ok(Some(Value::I32(0)))
+}
+
+fn environ_sizes_get(_wasi: &mut WasiSnapshotPreview1, store: &mut Store, args: Vec<Value>) -> Result<Option<Value>> {
+  let args: Vec<i32> = args.into_iter().map(Into::into).collect();
+  let environc_offset = args[0] as u32;
+  let environ_buf_size_offset = args[1] as u32;
+  let mut environc: i32 = 0;
+  let mut environ_buf_size: i32 = 0;
+  for env in env::vars() {
+      environc += 1;
+      environ_buf_size += (env.0.len() + 1 + env.1.len() + 1) as i32;
+  }
+  let memory = &mut store.memories[0];
+  memory.store(environc_offset, 0, 4, &environc.to_le_bytes())?;
+  memory.store(
+      environ_buf_size_offset,
+      0,
+      4,
+      &environ_buf_size.to_le_bytes(),
+  )?;
+  Ok(Some(Value::I32(0)))
+}
+
+fn environ_get(_wasi: &mut WasiSnapshotPreview1, store: &mut Store, args: Vec<Value>) -> Result<Option<Value>> {
+  let args: Vec<i32> = args.into_iter().map(Into::into).collect();
+  let mut environ_offset = args[0] as u32;
+  let mut environ_buf_offset = args[1] as i32;
+  for (key, value) in env::vars() {
+      store
+          .memories[0]
+          .store(environ_offset, 0, 4, &environ_buf_offset.to_le_bytes())?;
+      environ_offset += 4;
+      let text = format!("{key}={value}\0");
+      store.memories[0].store(
+          environ_buf_offset as u32,
+          0,
+          text.len() as u32,
+          text.as_bytes(),
+      )?;
+      environ_buf_offset += text.len() as i32;
+  }
+  Ok(Some(Value::I32(0)))
+}
+
+fn path_open(wasi: &mut WasiSnapshotPreview1, store: &mut Store, args: Vec<Value>) -> Result<Option<Value>> {
+  let fd: i32 = args[0].clone().into();
+  // let dirflags = args[1].;
+  let path_offset = i32::from(args[2].clone()) as u32;
+  let path_len: i32 = args[3].clone().into();
+  let oflags: i32 = args[4].clone().into();
+  let rights_base: i64 = args[5].clone().into();
+  // let rights_inheriting = args[6].as_i64()?;
+  let fdflags: i32 = args[7].clone().into();
+  let opened_fd_offset = i32::from(args[8].clone()) as u32;
+
+  let Some(Some(path)) = wasi.file_path.get(fd as usize) else {
+      return Ok(Some(ERRNO_INVAL.into()));
+  };
+
+  let file_path = store
+      .memories[0]
+      .load(path_offset, 0, path_len as u32)?
+      .into_iter()
+      .map(|b| *b as char)
+      .collect::<String>();
+  let file_path = file_path.trim_matches('\0');
+  let resolved_path = Path::new(path).join(file_path);
+  let open_options = OpenOptions::new()
+      .create((oflags & OFLAGS_CREAT) != 0)
+      .truncate((oflags & OFLAGS_TRUNC) != 0)
+      .create_new((oflags & OFLAGS_EXCL) != 0)
+      .read((rights_base & (RIGHTS_FD_READ | RIGHTS_FD_READDIR)) != 0)
+      .write(
+          (rights_base
+              & (RIGHTS_FD_DATASYNC
+                  | RIGHTS_FD_WRITE
+                  | RIGHTS_FD_ALLOCATE
+                  | RIGHTS_FD_FILESTAT_SET_SIZE))
+              != 0,
+      )
+      .append((fdflags & FDFLAGS_APPEND) != 0)
+      .open(&resolved_path)?;
+  wasi.file_table.push(Some(Box::new(ManuallyDrop::new(open_options))));
+  let opened_fd = wasi.file_table.len() as i32 - 1;
+  wasi.file_path
+    .push(Some(resolved_path.to_str().unwrap().to_string()));
+  store
+    .memories[0]
+    .store(opened_fd_offset, 0, 4, &opened_fd.to_le_bytes())?;
 
   Ok(Some(Value::I32(0)))
 }
