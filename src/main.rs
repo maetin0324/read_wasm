@@ -90,7 +90,7 @@ async fn main() {
     SubCommand::Server => {
       let local = tokio::task::LocalSet::new();
       local.run_until(
-      read_wasm::server::server::server_start()
+      read_wasm::comm::server::server_start()
       ).await.unwrap();
     }
     SubCommand::Client { server_addr, filename } => {
@@ -99,7 +99,7 @@ async fn main() {
       file.read_to_end(&mut data).unwrap();
       let local = tokio::task::LocalSet::new();
       local.run_until(
-        read_wasm::server::client::client(server_addr, data)
+        read_wasm::comm::client::client(server_addr, data)
       ).await.unwrap();
     }
   }
