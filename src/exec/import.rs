@@ -196,7 +196,7 @@ fn environ_sizes_get(_wasi: &mut WasiSnapshotPreview1, store: &mut Store, args: 
 fn environ_get(_wasi: &mut WasiSnapshotPreview1, store: &mut Store, args: Vec<Value>) -> Result<Option<Value>> {
   let args: Vec<i32> = args.into_iter().map(Into::into).collect();
   let mut environ_offset = args[0] as u32;
-  let mut environ_buf_offset = args[1] as i32;
+  let mut environ_buf_offset = args[1];
   for (key, value) in env::vars() {
       store
           .memories[0]
@@ -232,7 +232,7 @@ fn path_open(wasi: &mut WasiSnapshotPreview1, store: &mut Store, args: Vec<Value
   let file_path = store
       .memories[0]
       .load(path_offset, 0, path_len as u32)?
-      .into_iter()
+      .iter()
       .map(|b| *b as char)
       .collect::<String>();
   let file_path = file_path.trim_matches('\0');

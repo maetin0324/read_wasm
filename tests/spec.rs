@@ -109,7 +109,7 @@ mod tests {
     let globals = wasm.global_section.unwrap();
     assert_eq!(globals.len(), 1);
     assert_eq!(globals[0].valtype, binary::value_type::ValueType::I32);
-    assert_eq!(globals[0].mutability, false);
+    assert!(!globals[0].mutability);
   }
 
   #[test]

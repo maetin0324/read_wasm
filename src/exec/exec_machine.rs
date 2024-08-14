@@ -241,7 +241,7 @@ impl ExecMachine {
       Instructions::Drop => {
         self.value_stack.pop();
       },
-      Instructions::I32Load { align, offset } => {
+      Instructions::I32Load { align: _, offset } => {
         let Some(addr) = self.value_stack.pop() 
         else { 
           return Err(TrapError {
@@ -252,7 +252,7 @@ impl ExecMachine {
         let addr = Into::<i32>::into(addr) as u32;
         let size = std::mem::size_of::<i32>();
         let value = self.store.memories[0].load(*offset, addr, size as u32).unwrap();
-        let value: i32 = i32::from_le_bytes([value[0], value[1], value[2], value[3]]).into();
+        let value: i32 = i32::from_le_bytes([value[0], value[1], value[2], value[3]]);
         self.value_stack.push(Value::I32(value));
       },
       Instructions::I64Load { align: _, offset } => {
@@ -266,7 +266,7 @@ impl ExecMachine {
         let addr = Into::<i32>::into(addr) as u32;
         let size = std::mem::size_of::<i64>();
         let value = self.store.memories[0].load(*offset, addr, size as u32).unwrap();
-        let value: i64 = i64::from_le_bytes([value[0], value[1], value[2], value[3], value[4], value[5], value[6], value[7]]).into();
+        let value: i64 = i64::from_le_bytes([value[0], value[1], value[2], value[3], value[4], value[5], value[6], value[7]]);
         self.value_stack.push(Value::I64(value));
       },
       Instructions::F32Load { align: _, offset } => {
@@ -280,10 +280,10 @@ impl ExecMachine {
         let addr = Into::<i32>::into(addr) as u32;
         let size = std::mem::size_of::<f32>();
         let value = self.store.memories[0].load(*offset, addr, size as u32).unwrap();
-        let value: f32 = f32::from_le_bytes([value[0], value[1], value[2], value[3]]).into();
+        let value: f32 = f32::from_le_bytes([value[0], value[1], value[2], value[3]]);
         self.value_stack.push(Value::F32(value));
       },
-      Instructions::F64Load { align, offset } => {
+      Instructions::F64Load { align: _, offset } => {
         let Some(addr) = self.value_stack.pop() 
         else { 
           return Err(TrapError {
@@ -294,7 +294,7 @@ impl ExecMachine {
         let addr = Into::<i32>::into(addr) as u32;
         let size = std::mem::size_of::<f64>();
         let value = self.store.memories[0].load(*offset, addr, size as u32).unwrap();
-        let value: f64 = f64::from_le_bytes([value[0], value[1], value[2], value[3], value[4], value[5], value[6], value[7]]).into();
+        let value: f64 = f64::from_le_bytes([value[0], value[1], value[2], value[3], value[4], value[5], value[6], value[7]]);
         self.value_stack.push(Value::F64(value));
       },
       Instructions::I32Load8S { align: _, offset } => {
@@ -308,8 +308,8 @@ impl ExecMachine {
         let addr = Into::<i32>::into(addr) as u32;
         let size = std::mem::size_of::<i8>();
         let value = self.store.memories[0].load(*offset, addr, size as u32).unwrap();
-        let value: i8 = i8::from_le_bytes([value[0]]).into();
-        self.value_stack.push(Value::I32((value as i32).into()));
+        let value: i8 = i8::from_le_bytes([value[0]]);
+        self.value_stack.push(Value::I32(value as i32));
       },
       Instructions::I32Load8U { align: _, offset } => {
         let Some(addr) = self.value_stack.pop() 
@@ -322,8 +322,8 @@ impl ExecMachine {
         let addr = Into::<i32>::into(addr) as u32;
         let size = std::mem::size_of::<u8>();
         let value = self.store.memories[0].load(*offset, addr, size as u32).unwrap();
-        let value: u8 = u8::from_le_bytes([value[0]]).into();
-        self.value_stack.push(Value::I32((value as i32).into()));
+        let value: u8 = u8::from_le_bytes([value[0]]);
+        self.value_stack.push(Value::I32(value as i32));
       },
       Instructions::I32Load16S { align: _, offset } => {
         let Some(addr) = self.value_stack.pop() 
@@ -336,8 +336,8 @@ impl ExecMachine {
         let addr = Into::<i32>::into(addr) as u32;
         let size = std::mem::size_of::<i16>();
         let value = self.store.memories[0].load(*offset, addr, size as u32).unwrap();
-        let value: i16 = i16::from_le_bytes([value[0], value[1]]).into();
-        self.value_stack.push(Value::I32((value as i32).into()));
+        let value: i16 = i16::from_le_bytes([value[0], value[1]]);
+        self.value_stack.push(Value::I32(value as i32));
       },
       Instructions::I32Load16U { align: _, offset } => {
         let Some(addr) = self.value_stack.pop() 
@@ -350,8 +350,8 @@ impl ExecMachine {
         let addr = Into::<i32>::into(addr) as u32;
         let size = std::mem::size_of::<u16>();
         let value = self.store.memories[0].load(*offset, addr, size as u32).unwrap();
-        let value: u16 = u16::from_le_bytes([value[0], value[1]]).into();
-        self.value_stack.push(Value::I32((value as i32).into()));
+        let value: u16 = u16::from_le_bytes([value[0], value[1]]);
+        self.value_stack.push(Value::I32(value as i32));
       },
       Instructions::I64Load8S { align: _, offset } => {
         let Some(addr) = self.value_stack.pop() 
@@ -364,8 +364,8 @@ impl ExecMachine {
         let addr = Into::<i32>::into(addr) as u32;
         let size = std::mem::size_of::<i8>();
         let value = self.store.memories[0].load(*offset, addr, size as u32).unwrap();
-        let value: i8 = i8::from_le_bytes([value[0]]).into();
-        self.value_stack.push(Value::I64((value as i64).into()));
+        let value: i8 = i8::from_le_bytes([value[0]]);
+        self.value_stack.push(Value::I64(value as i64));
       },
       Instructions::I64Load8U { align: _, offset } => {
         let Some(addr) = self.value_stack.pop() 
@@ -378,8 +378,8 @@ impl ExecMachine {
         let addr = Into::<i32>::into(addr) as u32;
         let size = std::mem::size_of::<u8>();
         let value = self.store.memories[0].load(*offset, addr, size as u32).unwrap();
-        let value: u8 = u8::from_le_bytes([value[0]]).into();
-        self.value_stack.push(Value::I64((value as i64).into()));
+        let value: u8 = u8::from_le_bytes([value[0]]);
+        self.value_stack.push(Value::I64(value as i64));
       },
       Instructions::I64Load16S { align: _, offset } => {
         let Some(addr) = self.value_stack.pop() 
@@ -392,8 +392,8 @@ impl ExecMachine {
         let addr = Into::<i32>::into(addr) as u32;
         let size = std::mem::size_of::<i16>();
         let value = self.store.memories[0].load(*offset, addr, size as u32).unwrap();
-        let value: i16 = i16::from_le_bytes([value[0], value[1]]).into();
-        self.value_stack.push(Value::I64((value as i64).into()));
+        let value: i16 = i16::from_le_bytes([value[0], value[1]]);
+        self.value_stack.push(Value::I64(value as i64));
       },
       Instructions::I64Load16U { align: _, offset } => {
         let Some(addr) = self.value_stack.pop() 
@@ -406,8 +406,8 @@ impl ExecMachine {
         let addr = Into::<i32>::into(addr) as u32;
         let size = std::mem::size_of::<u16>();
         let value = self.store.memories[0].load(*offset, addr, size as u32).unwrap();
-        let value: u16 = u16::from_le_bytes([value[0], value[1]]).into();
-        self.value_stack.push(Value::I64((value as i64).into()));
+        let value: u16 = u16::from_le_bytes([value[0], value[1]]);
+        self.value_stack.push(Value::I64(value as i64));
       },
       Instructions::I64Load32S { align: _, offset } => {
         let Some(addr) = self.value_stack.pop() 
@@ -420,8 +420,8 @@ impl ExecMachine {
         let addr = Into::<i32>::into(addr) as u32;
         let size = std::mem::size_of::<i32>();
         let value = self.store.memories[0].load(*offset, addr, size as u32).unwrap();
-        let value: i32 = i32::from_le_bytes([value[0], value[1], value[2], value[3]]).into();
-        self.value_stack.push(Value::I64((value as i64).into()));
+        let value: i32 = i32::from_le_bytes([value[0], value[1], value[2], value[3]]);
+        self.value_stack.push(Value::I64(value as i64));
       },
       Instructions::I64Load32U { align: _, offset } => {
         let Some(addr) = self.value_stack.pop() 
@@ -434,8 +434,8 @@ impl ExecMachine {
         let addr = Into::<i32>::into(addr) as u32;
         let size = std::mem::size_of::<u32>();
         let value = self.store.memories[0].load(*offset, addr, size as u32).unwrap();
-        let value: u32 = u32::from_le_bytes([value[0], value[1], value[2], value[3]]).into();
-        self.value_stack.push(Value::I64((value as i64).into()));
+        let value: u32 = u32::from_le_bytes([value[0], value[1], value[2], value[3]]);
+        self.value_stack.push(Value::I64(value as i64));
       },
       Instructions::I32Store { align: _, offset } => {
         let (Some(value), Some(addr)) = (self.value_stack.pop(), self.value_stack.pop()) 
