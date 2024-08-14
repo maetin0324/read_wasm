@@ -238,20 +238,20 @@ fn path_open(wasi: &mut WasiSnapshotPreview1, store: &mut Store, args: Vec<Value
   let file_path = file_path.trim_matches('\0');
   let resolved_path = Path::new(path).join(file_path);
   let open_options = OpenOptions::new()
-      .create((oflags & OFLAGS_CREAT) != 0)
-      .truncate((oflags & OFLAGS_TRUNC) != 0)
-      .create_new((oflags & OFLAGS_EXCL) != 0)
-      .read((rights_base & (RIGHTS_FD_READ | RIGHTS_FD_READDIR)) != 0)
-      .write(
-          (rights_base
-              & (RIGHTS_FD_DATASYNC
-                  | RIGHTS_FD_WRITE
-                  | RIGHTS_FD_ALLOCATE
-                  | RIGHTS_FD_FILESTAT_SET_SIZE))
-              != 0,
-      )
-      .append((fdflags & FDFLAGS_APPEND) != 0)
-      .open(&resolved_path)?;
+    .create((oflags & OFLAGS_CREAT) != 0)
+    .truncate((oflags & OFLAGS_TRUNC) != 0)
+    .create_new((oflags & OFLAGS_EXCL) != 0)
+    .read((rights_base & (RIGHTS_FD_READ | RIGHTS_FD_READDIR)) != 0)
+    .write(
+      (rights_base
+          & (RIGHTS_FD_DATASYNC
+              | RIGHTS_FD_WRITE
+              | RIGHTS_FD_ALLOCATE
+              | RIGHTS_FD_FILESTAT_SET_SIZE))
+          != 0,
+    )
+    .append((fdflags & FDFLAGS_APPEND) != 0)
+    .open(&resolved_path)?;
   wasi.file_table.push(Some(Box::new(ManuallyDrop::new(open_options))));
   let opened_fd = wasi.file_table.len() as i32 - 1;
   wasi.file_path
