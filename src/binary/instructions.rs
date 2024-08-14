@@ -2,7 +2,7 @@ use core::panic;
 use serde::{Deserialize, Serialize};
 
 use nom::{
-  number::complete::le_u8, IResult,
+  bytes::complete::tag, number::complete::le_u8, IResult
 };
 
 use nom_leb128::{leb128_i32, leb128_i64, leb128_u32};
@@ -32,6 +32,8 @@ pub enum Instructions {
   Return,
   Call(u32),
   Drop,
+  Select,
+  SelectValtype(Vec<ValueType>),
   I32Load{align: u32, offset: u32},
   I64Load{align: u32, offset: u32},
   F32Load{align: u32, offset: u32},
@@ -57,6 +59,9 @@ pub enum Instructions {
   I64Store32{align: u32, offset: u32},
   MemorySize,
   MemoryGrow,
+  MemoryInit(u32),
+  DataDrop(u32),
+  MemoryCopy,
   I32Const(i32),
   I64Const(i64),
   F32Const(f32),
@@ -240,6 +245,12 @@ impl Instructions {
         Ok((input, Instructions::Call(func_idx)))
       }
       0x1a => Ok((input, Instructions::Drop)),
+      0x1b => Ok((input, Instructions::Select)),
+      0x1c => {
+        let (input, count) = leb128_u32(input)?;
+        let (input, valtypes) = ValueType::parse_vec(input, count)?;
+        Ok((input, Instructions::SelectValtype(valtypes)))
+      },
       0x20 => {
         let (input, val) = leb128_u32(input)?;
         Ok((input, Instructions::LocalGet(val)))
@@ -375,8 +386,14 @@ impl Instructions {
         let (input, offset) = leb128_u32(input)?;
         Ok((input, Instructions::I64Store32 { align, offset }))
       },
-      0x3f => Ok((input, Instructions::MemorySize)),
-      0x40 => Ok((input, Instructions::MemoryGrow)),
+      0x3f => {
+        let (input, _) = tag([0x00])(input)?;
+        Ok((input, Instructions::MemorySize))
+      },
+      0x40 => {
+        let (input, _) = tag([0x00])(input)?;
+        Ok((input, Instructions::MemoryGrow))
+      },
       0x41 => {
         let (input, val) = leb128_i32(input)?;
         Ok((input, Instructions::I32Const(val)))
@@ -521,9 +538,31 @@ impl Instructions {
       0xc2 => Ok((input, Instructions::I64Extend8S)),
       0xc3 => Ok((input, Instructions::I64Extend16S)),
       0xc4 => Ok((input, Instructions::I64Extend32S)),
+
+      0xfc => {
+        let (input, byte) = leb128_u32(input)?;
+        match byte {
+          0x08 => {
+            let (input, dataidx) = leb128_u32(input)?;
+            let (input, _) = tag([0x00])(input)?;
+            Ok((input, Instructions::MemoryInit(dataidx)))
+          }
+          0x09 => {
+            let (input, dataidx) = leb128_u32(input)?;
+            let (input, _) = tag([0x00])(input)?;
+            Ok((input, Instructions::DataDrop(dataidx)))
+          }
+          0x0a => {
+            let (input, _) = tag([0x00, 0x00])(input)?;
+            Ok((input, Instructions::MemoryCopy))
+          },
+          _ => panic!("Unknown opcode: 0xfc {:#x?}", byte),
+        }
+      }
       
       _ => {
-        panic!("Unknown opcode: {:#x?}", opcode);
+        let next = input.iter().take(10).map(|x| format!("{:#x?}", x)).collect::<Vec<String>>().join(", ");
+        panic!("Unknown opcode: {:#x?}, next: {:#?}", opcode, next);
       }
     }
   }

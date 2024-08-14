@@ -1,3 +1,4 @@
+use nom::IResult;
 use serde::{Deserialize, Serialize};
 
 use crate::exec::value::Value;
@@ -19,6 +20,17 @@ impl ValueType {
       0x7C => ValueType::F64,
       _ => panic!("Unknown value type: {:#x?}", input),
     }
+  }
+
+  pub fn parse_vec(input: &[u8], count: u32) -> IResult<&[u8], Vec<ValueType>> {
+    let mut res = Vec::new();
+    let mut input = input;
+    for _ in 0..count {
+      let value_type = ValueType::parse(input[0]);
+      res.push(value_type);
+      input = &input[1..];
+    }
+    Ok((input, res))
   }
 
   pub fn to_init_value(&self) -> Value {

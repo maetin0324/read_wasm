@@ -1,6 +1,7 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
+use crate::binary::value_type::ValueType;
 use crate::binary::wasm::Wasm;
 use crate::binary::instructions::{BlockType, Instructions};
 use super::block_frame::BlockFrame;
@@ -241,6 +242,48 @@ impl ExecMachine {
       Instructions::Drop => {
         self.value_stack.pop();
       },
+      Instructions::Select => {
+        let (Some(c), Some(a), Some(b)) = (self.value_stack.pop(), self.value_stack.pop(), self.value_stack.pop()) 
+        else { 
+          return Err(TrapError {
+            message: "Select: value stack underflow".to_string(), 
+            vm: self.clone() 
+          })
+        };
+        if c.eq_for_value_type(&ValueType::I32) {
+          if c != Value::I32(0) {
+            self.value_stack.push(a);
+          } else {
+            self.value_stack.push(b);
+          }
+        } else {
+          return Err(TrapError {
+            message: "Select: invalid value type".to_string(),
+            vm: self.clone(),
+          });
+        }
+      },
+      Instructions::SelectValtype(_) => {
+        let (Some(c), Some(a), Some(b)) = (self.value_stack.pop(), self.value_stack.pop(), self.value_stack.pop()) 
+        else { 
+          return Err(TrapError {
+            message: "Select: value stack underflow".to_string(), 
+            vm: self.clone() 
+          })
+        };
+        if c.eq_for_value_type(&ValueType::I32) {
+          if c != Value::I32(0) {
+            self.value_stack.push(a);
+          } else {
+            self.value_stack.push(b);
+          }
+        } else {
+          return Err(TrapError {
+            message: "Select: invalid value type".to_string(),
+            vm: self.clone(),
+          });
+        }
+      }
       Instructions::I32Load { align: _, offset } => {
         let Some(addr) = self.value_stack.pop() 
         else { 
@@ -665,6 +708,26 @@ impl ExecMachine {
           }
         }
       },
+      Instructions::MemoryCopy => {
+        let (Some(dst), Some(src), Some(len)) = (self.value_stack.pop(), self.value_stack.pop(), self.value_stack.pop()) 
+        else { 
+          return Err(TrapError {
+            message: "MemoryCopy: value stack underflow".to_string(), 
+            vm: self.clone() 
+          })
+        };
+        match (dst, src, len) {
+          (Value::I32(dst), Value::I32(src), Value::I32(len)) => {
+            self.store.memories[0].copy(dst as usize, src as usize, len as usize).unwrap();
+          },
+          _ => {
+            return Err(TrapError {
+              message: "MemoryCopy: invalid value type".to_string(),
+              vm: self.clone(),
+            });
+          }
+        }
+      }
       Instructions::I32Const(val) => {
         self.value_stack.push(Value::I32(*val));
       },

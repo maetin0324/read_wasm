@@ -69,6 +69,7 @@ impl Store {
       }
     }
 
+
     Store {
       funcs,
       memories,
@@ -130,6 +131,26 @@ impl Store {
     };
     self.call_func(func_idx, args)
   }
+
+  // pub fn memory_init(
+  //   &mut self,
+  //   dataidx: usize,
+  //   src: usize,
+  //   dest: usize,
+  //   size: usize,
+  // ) -> Result<()> {
+  //     if src + size > self.data[dataidx].len() {
+  //         Err("Out of data")?;
+  //     }
+  //     if dest + size > self.memory.data.len() {
+  //         Err("Out of memory")?;
+  //     }
+  //     if size != 0 {
+  //         self.memory.data[dest..dest + size]
+  //             .copy_from_slice(&self.data[dataidx][src..src + size]);
+  //     }
+  //     Ok(())
+  // }
 }
 
 impl MemoryInst {
