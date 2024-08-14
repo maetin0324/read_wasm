@@ -66,6 +66,24 @@ impl From<Value> for i64 {
   }
 }
 
+impl From<Value> for f32 {
+  fn from(value: Value) -> Self {
+    match value {
+        Value::F32(value) => value,
+        _ => panic!("type mismatch"),
+    }
+  }
+} 
+
+impl From<Value> for f64 {
+  fn from(value: Value) -> Self {
+    match value {
+        Value::F64(value) => value,
+        _ => panic!("type mismatch"),
+    }
+  }
+}
+
 impl From<i32> for Value {
   fn from(value: i32) -> Self {
     Value::I32(value)
@@ -75,5 +93,17 @@ impl From<i32> for Value {
 impl From<i64> for Value {
   fn from(value: i64) -> Self {
     Value::I64(value)
+  }
+}
+
+impl From<f32> for Value {
+  fn from(value: f32) -> Self {
+    Value::F32(value)
+  }
+}
+
+impl From<f64> for Value {
+  fn from(value: f64) -> Self {
+    Value::F64(value)
   }
 }

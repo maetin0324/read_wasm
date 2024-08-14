@@ -481,6 +481,190 @@ impl ExecMachine {
         let value: i64 = value.into();
         memory.memory[at..end].copy_from_slice(&value.to_le_bytes());
       },
+      Instructions::F32Store { align: _, offset } => {
+        let (Some(value), Some(addr)) = (self.value_stack.pop(), self.value_stack.pop()) 
+        else { 
+          return Err(TrapError {
+            message: "I32Store: value stack underflow".to_string(), 
+            vm: self.clone() 
+          })
+        };
+
+        let addr = Into::<i32>::into(addr) as usize;
+        let offset = (*offset) as usize;
+        let at = addr + offset; // 2
+        let end = at + std::mem::size_of::<f32>();
+
+        let memory = self
+                        .store
+                        .memories
+                        .get_mut(0)
+                        .unwrap();
+        let value: f32 = value.into();
+        memory.memory[at..end].copy_from_slice(&value.to_le_bytes());
+      },
+      Instructions::F64Store { align: _, offset } => {
+        let (Some(value), Some(addr)) = (self.value_stack.pop(), self.value_stack.pop()) 
+        else { 
+          return Err(TrapError {
+            message: "I32Store: value stack underflow".to_string(), 
+            vm: self.clone() 
+          })
+        };
+
+        let addr = Into::<i32>::into(addr) as usize;
+        let offset = (*offset) as usize;
+        let at = addr + offset; // 2
+        let end = at + std::mem::size_of::<f64>();
+
+        let memory = self
+                        .store
+                        .memories
+                        .get_mut(0)
+                        .unwrap();
+        let value: f64 = value.into();
+        memory.memory[at..end].copy_from_slice(&value.to_le_bytes());
+      },
+      Instructions::I32Store8 { align: _, offset } => {
+        let (Some(value), Some(addr)) = (self.value_stack.pop(), self.value_stack.pop()) 
+        else { 
+          return Err(TrapError {
+            message: "I32Store: value stack underflow".to_string(), 
+            vm: self.clone() 
+          })
+        };
+        let value: i32 = value.into();
+        let value = value.to_le_bytes().to_vec();
+        let addr = Into::<i32>::into(addr) as u32;
+        let size = std::mem::size_of::<i8>();
+
+        let memory = self
+                        .store
+                        .memories
+                        .get_mut(0)
+                        .unwrap();
+        match memory.store(*offset, addr, size as u32, &value) {
+          Ok(_) => {},
+          Err(e) => {
+            return Err(TrapError {
+              message: format!("I32Store8: {}", e),
+              vm: self.clone(),
+            });
+          }
+        }
+      },
+      Instructions::I32Store16 { align: _, offset } => {
+        let (Some(value), Some(addr)) = (self.value_stack.pop(), self.value_stack.pop()) 
+        else { 
+          return Err(TrapError {
+            message: "I32Store: value stack underflow".to_string(), 
+            vm: self.clone() 
+          })
+        };
+        let value: i32 = value.into();
+        let value = value.to_le_bytes().to_vec();
+        let addr = Into::<i32>::into(addr) as u32;
+        let size = std::mem::size_of::<i16>();
+
+        let memory = self
+                        .store
+                        .memories
+                        .get_mut(0)
+                        .unwrap();
+        match memory.store(*offset, addr, size as u32, &value) {
+          Ok(_) => {},
+          Err(e) => {
+            return Err(TrapError {
+              message: format!("I32Store16: {}", e),
+              vm: self.clone(),
+            });
+          }
+        }
+      },
+      Instructions::I64Store8 { align: _, offset } => {
+        let (Some(value), Some(addr)) = (self.value_stack.pop(), self.value_stack.pop()) 
+        else { 
+          return Err(TrapError {
+            message: "I32Store: value stack underflow".to_string(), 
+            vm: self.clone() 
+          })
+        };
+        let value: i64 = value.into();
+        let value = value.to_le_bytes().to_vec();
+        let addr = Into::<i32>::into(addr) as u32;
+        let size = std::mem::size_of::<i8>();
+
+        let memory = self
+                        .store
+                        .memories
+                        .get_mut(0)
+                        .unwrap();
+        match memory.store(*offset, addr, size as u32, &value) {
+          Ok(_) => {},
+          Err(e) => {
+            return Err(TrapError {
+              message: format!("I64Store8: {}", e),
+              vm: self.clone(),
+            });
+          }
+        }
+      },
+      Instructions::I64Store16 { align: _, offset } => {
+        let (Some(value), Some(addr)) = (self.value_stack.pop(), self.value_stack.pop()) 
+        else { 
+          return Err(TrapError {
+            message: "I32Store: value stack underflow".to_string(), 
+            vm: self.clone() 
+          })
+        };
+        let value: i64 = value.into();
+        let value = value.to_le_bytes().to_vec();
+        let addr = Into::<i32>::into(addr) as u32;
+        let size = std::mem::size_of::<i16>();
+
+        let memory = self
+                        .store
+                        .memories
+                        .get_mut(0)
+                        .unwrap();
+        match memory.store(*offset, addr, size as u32, &value) {
+          Ok(_) => {},
+          Err(e) => {
+            return Err(TrapError {
+              message: format!("I64Store16: {}", e),
+              vm: self.clone(),
+            });
+          }
+        }
+      },
+      Instructions::I64Store32 { align: _, offset } => {
+        let (Some(value), Some(addr)) = (self.value_stack.pop(), self.value_stack.pop()) 
+        else { 
+          return Err(TrapError {
+            message: "I32Store: value stack underflow".to_string(), 
+            vm: self.clone() 
+          })
+        };
+        let value: i64 = value.into();
+        let value = value.to_le_bytes().to_vec();
+        let addr = Into::<i32>::into(addr) as u32;
+        let size = std::mem::size_of::<i32>();
+
+        let memory = self
+                        .store
+                        .memories
+                        .get_mut(0)
+                        .unwrap();
+        match memory.store(*offset, addr, size as u32, &value) {
+          Ok(_) => {},
+          Err(e) => {
+            return Err(TrapError {
+              message: format!("I64Store32: {}", e),
+              vm: self.clone(),
+            });
+          }
+        }
+      },
       Instructions::I32Const(val) => {
         self.value_stack.push(Value::I32(*val));
       },
