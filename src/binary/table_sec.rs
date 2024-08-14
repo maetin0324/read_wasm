@@ -11,6 +11,7 @@ pub struct TableSec {
 #[derive(Debug, Clone, PartialEq)]
 pub enum RefType {
   FuncRef,
+  ExternRef,
 }
 
 impl TableSec {
@@ -46,6 +47,7 @@ impl RefType {
     let (input, reftype) = take(1usize)(input)?;
     match reftype[0] {
       0x70 => Ok((input, RefType::FuncRef)),
+      0x6F => Ok((input, RefType::ExternRef)),
       _ => panic!("unknown reference type"),
     }
   }

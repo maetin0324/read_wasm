@@ -9,6 +9,7 @@ pub const PAGE_SIZE: usize = 65536; // 64Ki
 #[derive(Debug, Default, Clone, PartialEq , Serialize, Deserialize)]
 pub struct Store {
   pub funcs: Vec<FuncInstance>,
+  pub tables: Vec<Table>,
   pub memories: Vec<MemoryInst>,
   pub globals: Vec<GlobalValue>,
 }
@@ -25,8 +26,37 @@ pub struct GlobalValue {
   pub mutability: bool,
 }
 
+#[derive(Debug, Clone, PartialEq , Serialize, Deserialize)]
+pub enum Table {
+  FuncRef(Vec<Option<usize>>),
+  ExternRef(Vec<Option<Value>>),
+}
+
+impl Default for Table {
+  fn default() -> Self {
+    Table::FuncRef(Vec::new())
+  }
+}
+
 impl Store {
   pub fn new(funcs: Vec<FuncInstance>, wasm: &Wasm) -> Store {
+    let mut tables: Vec<Table> = Vec::new();
+    if let Some(ref table_sec) = wasm.table_section {
+      for table_s in table_sec {
+        match table_s.reftype {
+          crate::binary::table_sec::RefType::FuncRef => {
+            let mut table = Vec::new();
+            table.resize(table_s.min as usize, None);
+            tables.push(Table::FuncRef(table));
+          },
+          crate::binary::table_sec::RefType::ExternRef => {
+            let mut table = Vec::new();
+            table.resize(table_s.min as usize, None);
+            tables.push(Table::ExternRef(table));
+          },
+        }
+      }
+    }
     let mut memories = Vec::new();
     if let Some(ref memory_sec) = wasm.memory_section {
       for memory in memory_sec {
@@ -72,6 +102,7 @@ impl Store {
 
     Store {
       funcs,
+      tables,
       memories,
       globals,
     }
