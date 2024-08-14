@@ -87,12 +87,14 @@ async fn main() {
       let data = machine.serialize_vm();
       File::create("vm.serialized").unwrap().write_all(&data).unwrap();
     }
+    #[cfg(feature = "ucx")]
     SubCommand::Server => {
       let local = tokio::task::LocalSet::new();
       local.run_until(
       read_wasm::comm::server::server_start()
       ).await.unwrap();
     }
+    #[cfg(feature = "ucx")]
     SubCommand::Client { server_addr, filename } => {
       let mut file = File::open(filename).unwrap();
       let mut data  = Vec::new();
@@ -102,5 +104,6 @@ async fn main() {
         read_wasm::comm::client::client(server_addr, data)
       ).await.unwrap();
     }
+    _ => {}
   }
 }
