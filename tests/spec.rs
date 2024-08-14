@@ -6,7 +6,8 @@ mod tests {
   use std::{path, vec};
 
   use read_wasm::binary;
-  use read_wasm::binary::wasm::Wasm;
+  use read_wasm::binary::table_sec::RefType;
+use read_wasm::binary::wasm::Wasm;
   use read_wasm::exec::exec_machine::ExecMachine;
   use read_wasm::exec::func_instance::FuncInstance;
   use read_wasm::exec::store::Store;
@@ -110,6 +111,24 @@ mod tests {
     assert_eq!(globals.len(), 1);
     assert_eq!(globals[0].valtype, binary::value_type::ValueType::I32);
     assert!(!globals[0].mutability);
+  }
+
+  #[test]
+  fn test_parse_table_sec_wasm() {
+    let wasm = create_wasm_from_testsuite("tests/testsuite/tablesec.wat");
+    assert!(wasm.type_section.is_none());
+    assert!(wasm.import_section.is_none());
+    assert!(wasm.function_section.is_none());
+    assert!(wasm.memory_section.is_none());
+    assert!(wasm.export_section.is_some());
+    assert!(wasm.code_section.is_none());
+    assert!(wasm.table_section.is_some());
+
+    let tables = wasm.table_section.unwrap();
+    assert_eq!(tables.len(), 1);
+    assert_eq!(tables[0].min, 1);
+    assert_eq!(tables[0].max, Some(1));
+    assert_eq!(tables[0].reftype, RefType::FuncRef);
   }
 
   #[test]

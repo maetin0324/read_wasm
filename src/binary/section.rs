@@ -1,6 +1,7 @@
 use super::data_sec::Data;
 use super::global_sec::GlobalVar;
 use super::memory_sec::MemorySec;
+use super::table_sec::TableSec;
 use super::type_sec::FuncType;
 use super::import_sec::Import;
 use super::func_sec::Func;
@@ -14,7 +15,7 @@ pub enum Section {
   TypeSection(Vec<FuncType>),
   ImportSection(Vec<Import>),
   FunctionSection(Vec<Func>),
-  TableSection,
+  TableSection(Vec<TableSec>),
   MemorySection(Vec<MemorySec>),
   GlobalSection(Vec<GlobalVar>),
   ExportSection(Vec<ExportFunc>),
@@ -54,7 +55,11 @@ impl Section {
         Section::FunctionSection(funcs)
       },
       4 => {
-        Section::TableSection
+        let tables = match TableSec::parse(section_data) {
+          Ok((_, tables)) => tables,
+          Err(e) => panic!("Error: {:#x?}", e),
+        };
+        Section::TableSection(tables)
       },
       5 => {
         let memories = match MemorySec::parse(section_data) {

@@ -7,6 +7,7 @@ use super::data_sec::Data;
 use super::global_sec::GlobalVar;
 use super::memory_sec::MemorySec;
 use super::section::Section;
+use super::table_sec::TableSec;
 use super::type_sec::FuncType;
 use super::import_sec::Import;
 use super::func_sec::Func;
@@ -19,6 +20,7 @@ pub struct Wasm {
   pub type_section: Option<Vec<FuncType>>,
   pub import_section: Option<Vec<Import>>,
   pub function_section: Option<Vec<Func>>,
+  pub table_section: Option<Vec<TableSec>>,
   pub memory_section: Option<Vec<MemorySec>>,
   pub global_section: Option<Vec<GlobalVar>>,
   pub export_section: Option<Vec<ExportFunc>>,
@@ -41,6 +43,7 @@ impl Wasm {
       type_section: None,
       import_section: None,
       function_section: None,
+      table_section: None,
       memory_section: None,
       global_section: None,
       export_section: None,
@@ -68,6 +71,9 @@ impl Wasm {
         },
         Section::FunctionSection(funcs) => {
             wasm.function_section = Some(funcs);
+        },
+        Section::TableSection(tables) => {
+            wasm.table_section = Some(tables);
         },
         Section::MemorySection(memories) => {
           wasm.memory_section = Some(memories);
