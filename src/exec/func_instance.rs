@@ -67,7 +67,12 @@ impl FuncInstance {
             None => panic!("type_idx {} not found", func.type_idx),
           };
           let mut local_types = param_types.clone();
-          local_types.extend(code.locals.iter().map(|l| l.value_type.clone()).collect::<Vec<ValueType>>());
+          let mut locals = Vec::new();
+          locals.extend(param_types.iter().map(|t| t.to_init_value()));
+          for l in code.locals.iter() {
+            local_types.extend(l.to_value_type_vec());
+            locals.extend(vec![l.value_type.to_init_value(); l.count as usize]);
+          }
           let _ = code.locals.iter().map(|l| local_types.extend(l.to_value_type_vec()));
 
           let name: Option<String> = exports.iter().find_map(|e| {
@@ -80,9 +85,6 @@ impl FuncInstance {
               None
             }
           });
-
-          let mut locals = Vec::new();
-          locals.extend(local_types.iter().map(|t| t.to_init_value()));
           
 
           func_instances.push(FuncInstance::Internal(InternalFunc {
@@ -96,7 +98,7 @@ impl FuncInstance {
         
       }
     },
-      _ => panic!("type_section, function_section, export_section, code_section is required"),
+      _ => {},
     }
     func_instances
   }

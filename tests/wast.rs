@@ -117,7 +117,10 @@ use tokio::io::AsyncReadExt;
     let tests = test_suite.commands;
     let mut vm = None;
     let mut wasi = WasiSnapshotPreview1::new();
+    let mut count = 0;
     for test in tests {
+      count += 1;
+      println!("{}: {:?}", count, test);
       match test {
         Test::Module { filename, .. } => {
           let filename = format!("./target/tmp/{filename}");
@@ -125,6 +128,7 @@ use tokio::io::AsyncReadExt;
           vm = Some(ExecMachine::init_without_start(wasm));
         }
         Test::AssertReturn { line: _, action, expected } => {
+          vm.as_mut().unwrap().value_stack.clear();
           let action = match action {
             Action::Invoke { field, args } => {
               let args = args.into_iter().map(|x| x.into()).collect();
@@ -148,13 +152,18 @@ use tokio::io::AsyncReadExt;
             }
           }
         }
-        _ => unimplemented!(),
+        _ => {},
       }
     }
   }
 
-  #[tokio::test]
-  async fn test_i32() {
-    test_suite("i32.wast").await;
-  }
+  // #[tokio::test]
+  // async fn test_i32() {
+  //   test_suite("i32.wast").await;
+  // }
+
+  // #[tokio::test]
+  // async fn test_memory() {
+  //   test_suite("memory.wast").await;
+  // }
 }

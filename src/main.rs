@@ -50,7 +50,6 @@ async fn main() {
     SubCommand::Run { filename, entry_point, locals } => {
       let file = File::open(filename).unwrap();
       let wasm = Wasm::new(BufReader::new(file));
-      // println!("{:#?}", wasm);
 
       let locals = Value::parse_from_i64_vec(locals);
 
@@ -60,7 +59,6 @@ async fn main() {
         Ok(_) => { println!("return {:?}", machine.value_stack.last()); },
         Err(e) => {
           println!("ExecuteError: {:?}", e.message);
-          println!("VM: {:#?}", e.vm);
         },
       }
     }

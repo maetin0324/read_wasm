@@ -105,7 +105,7 @@ impl ExecMachine {
       return Ok(self);
     };
 
-    // println!("instr: {:?}, pc: {}, stack: {:?}, locals: {:?}", instr, func.pc, self.value_stack, func.locals);
+    println!("instr: {:?}, pc: {}, stack: {:?}, locals: {:?}", instr, func.pc, self.value_stack, func.locals);
     // println!("label_stack: {:#?}", func.label_stack);
     match instr {
       Instructions::Nop => {},
@@ -193,6 +193,7 @@ impl ExecMachine {
       Instructions::Call(idx) => {
         // self.serialize_vm();
         let callee = self.store.get_func(*idx as usize);
+        dbg!(idx);
         let mut args = Vec::new();
         for pty in callee.param_types().iter() {
           match self.value_stack.pop() {
@@ -215,6 +216,8 @@ impl ExecMachine {
           }
         }
         let called_func = self.store.call_func(*idx as usize, args);
+        func.pc += 1;
+        self.call_stack.push(FuncInstance::Internal(func));
         self.call_stack.push(called_func);
         return Ok(self);
       }
@@ -686,6 +689,10 @@ impl ExecMachine {
             });
           }
         }
+      },
+      Instructions::MemorySize => {
+        let size = self.store.memories[0].size();
+        self.value_stack.push(size);
       },
       Instructions::MemoryCopy => {
         let (Some(dst), Some(src), Some(len)) = (self.value_stack.pop(), self.value_stack.pop(), self.value_stack.pop()) 

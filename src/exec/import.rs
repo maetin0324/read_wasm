@@ -39,6 +39,7 @@ pub fn init_import() -> ImportTable {
 }
 
 pub fn fd_write(wasi: &mut WasiSnapshotPreview1, store: &mut Store, args: Vec<Value>) -> Result<Option<Value>> {
+  dbg!("fd_write");
   let args: Vec<i32> = args.into_iter().map(Into::into).collect();
 
   let fd = args[0];
