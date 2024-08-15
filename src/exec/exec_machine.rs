@@ -88,17 +88,22 @@ impl ExecMachine {
     Ok(self)
   }
 
+  pub async fn invoke(&mut self,wasi: &mut WasiSnapshotPreview1, entry_point: String, locals: Vec<Value>) -> Result<&ExecMachine, TrapError> {
+    self.call_stack.pop();
+    self.call_stack.push(self.store.call_func_by_name(&entry_point, locals));
+    self.exec(wasi).await
+  }
+
   pub async fn run(&mut self, mut func: InternalFunc)  -> Result<&ExecMachine, TrapError> {
     let Some(instr) = func.instrs.get(func.pc) else {
       return Ok(self);
     };
 
-    println!("instr: {:?}, pc: {}, stack: {:?}, locals: {:?}", instr, func.pc, self.value_stack, func.locals);
-    println!("label_stack: {:#?}", func.label_stack);
+    // println!("instr: {:?}, pc: {}, stack: {:?}, locals: {:?}", instr, func.pc, self.value_stack, func.locals);
+    // println!("label_stack: {:#?}", func.label_stack);
     match instr {
       Instructions::Nop => {},
       Instructions::Unreachable => {
-        println!{"call_stack: {:?}", self.call_stack};
         return Err(TrapError {
           message: "Unreachable".to_string(),
           vm: self.clone(),
@@ -203,7 +208,6 @@ impl ExecMachine {
             }
           }
         }
-        println!("call: {:?}", callee);
         let called_func = self.store.call_func(*idx as usize, args);
         self.call_stack.push(called_func);
         return Ok(self);

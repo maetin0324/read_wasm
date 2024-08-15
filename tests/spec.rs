@@ -192,7 +192,6 @@ use read_wasm::binary::wasm::Wasm;
     let wasm = create_wasm_from_testsuite("tests/mytestsuite/block.wat");
     let mut em = ExecMachine::init(wasm, "_start", vec![Value::I64(100)]);
     let mut wasi = WasiSnapshotPreview1::new();
-    dbg!(&em);
     em.exec(&mut wasi).await.unwrap();
     assert_eq!(em.value_stack.last().unwrap(), &Value::I64(5050));
   }
@@ -202,7 +201,6 @@ use read_wasm::binary::wasm::Wasm;
     let wasm = create_wasm_from_testsuite("tests/mytestsuite/block_table.wat");
     let mut em = ExecMachine::init(wasm, "_start", vec![]);
     let mut wasi = WasiSnapshotPreview1::new();
-    dbg!(&em);
     em.exec(&mut wasi).await.unwrap();
     assert_eq!(em.value_stack.last().unwrap(), &Value::I32(213));
   }
