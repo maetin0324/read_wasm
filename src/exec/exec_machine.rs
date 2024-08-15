@@ -93,6 +93,8 @@ impl ExecMachine {
       return Ok(self);
     };
 
+    println!("instr: {:?}, pc: {}, stack: {:?}, locals: {:?}", instr, func.pc, self.value_stack, func.locals);
+    println!("label_stack: {:#?}", func.label_stack);
     match instr {
       Instructions::Nop => {},
       Instructions::Unreachable => {
@@ -103,7 +105,12 @@ impl ExecMachine {
         });
       },
       Instructions::Block(block) => {
-        let frame = BlockFrame::new(self.value_stack.clone(), block.clone());
+        let frame = BlockFrame::new(self.value_stack.clone(), block.clone(), false);
+        self.value_stack.clear();
+        func.label_stack.push(frame);
+      },
+      Instructions::Loop(block) => {
+        let frame = BlockFrame::new(self.value_stack.clone(), block.clone(), true);
         self.value_stack.clear();
         func.label_stack.push(frame);
       },
@@ -121,73 +128,47 @@ impl ExecMachine {
         self.end_block(frame)?;
       },
       Instructions::Br(idx) => {
-        let block_depth = func.label_stack.len() - 1;
-        if block_depth < *idx as usize {
-          return Err(
-            TrapError {
-            message: "Br: label stack underflow".to_string(),
-            vm: self.clone(),
-          });
-        }
+        let idx = *idx as usize;
+        self.pop_labels(&mut func, idx)?;
 
-        let mut end_count = block_depth - *idx as usize + 1;
-        loop {
-          func.pc += 1;
-          let instrs = match func.instrs.get(func.pc) {
-            Some(i) => i.clone(),
-            None => {
-              return Err(TrapError {
-                message: "Br: instruction not found".to_string(),
-                vm: self.clone(),
-              });
-            }
-          };
+        // let block_depth = func.label_stack.len() - 1;
+        // if block_depth < *idx as usize {
+        //   return Err(
+        //     TrapError {
+        //     message: "Br: label stack underflow".to_string(),
+        //     vm: self.clone(),
+        //   });
+        // }
 
-          if instrs == Instructions::End {
-            end_count -= 1;
-            let frame = func.label_stack.pop().unwrap();
-            self.end_block(frame)?;
-            if end_count == 0 {
-              break;
-            }
-          }
-        }
+        // let mut end_count = block_depth - *idx as usize + 1;
+        // loop {
+        //   func.pc += 1;
+        //   let instrs = match func.instrs.get(func.pc) {
+        //     Some(i) => i.clone(),
+        //     None => {
+        //       return Err(TrapError {
+        //         message: "Br: instruction not found".to_string(),
+        //         vm: self.clone(),
+        //       });
+        //     }
+        //   };
+
+        //   if instrs == Instructions::End {
+        //     end_count -= 1;
+        //     let frame = func.label_stack.pop().unwrap();
+        //     self.end_block(frame)?;
+        //     if end_count == 0 {
+        //       break;
+        //     }
+        //   }
+        // }
       },
       Instructions::BrIf(idx) => {
         match self.value_stack.pop() {
           Some(Value::I32(val)) => {
             if val != 0 {
-              let block_depth = func.label_stack.len() - 1;
-              if block_depth < *idx as usize {
-                return Err(
-                  TrapError {
-                  message: "BrIf: label stack underflow".to_string(),
-                  vm: self.clone(),
-                });
-              }
-
-              let mut end_count = block_depth - *idx as usize + 1;
-              loop {
-                func.pc += 1;
-                let instrs = match func.instrs.get(func.pc) {
-                  Some(i) => i.clone(),
-                  None => {
-                    return Err(TrapError {
-                      message: "BrIf: instruction not found".to_string(),
-                      vm: self.clone(),
-                    });
-                  }
-                };
-
-                if instrs == Instructions::End {
-                  end_count -= 1;
-                  let frame = func.label_stack.pop().unwrap();
-                  self.end_block(frame)?;
-                  if end_count == 0 {
-                    break;
-                  }
-                }
-              }
+              let idx = *idx as usize;
+              self.pop_labels(&mut func, idx)?;
             }
           },
           _ => {
@@ -197,7 +178,26 @@ impl ExecMachine {
             });
           }
         }
-      }
+      },
+      Instructions::BrTable(labelidxs, default) => {
+        let val = match self.value_stack.pop() {
+          Some(Value::I32(v)) => v,
+          _ => {
+            return Err(TrapError {
+              message: "BrTable: invalid value type".to_string(),
+              vm: self.clone(),
+            });
+          }
+        };
+
+        let idx = if val as usize >= labelidxs.len() {
+          *default
+        } else {
+          labelidxs[val as usize]
+        };
+        
+        self.pop_labels(&mut func, idx as usize)?;
+      },
       Instructions::Return => {
         let frame = match func.label_stack.pop() {
           Some(f) => f,
@@ -3532,6 +3532,41 @@ impl ExecMachine {
     if let Some(v) = ret {
       self.value_stack.push(v);
     }
+    Ok(())
+  }
+
+  pub fn pop_labels(&mut self, func: &mut InternalFunc, count: usize) -> Result<(), TrapError> {
+    for _ in 0..count {
+      match func.label_stack.last() {
+        Some(_) => {
+            func.label_stack.pop();
+        },
+        None => {
+          return Err(TrapError {
+            message: "End: label stack underflow".to_string(),
+            vm: self.clone(),
+          });
+        }
+      }
+    }
+
+    match func.label_stack.pop() {
+      Some(frame) => {
+        func.pc = frame.jump_pc;
+        if frame.is_loop {
+          func.label_stack.push(frame);
+        } else {
+          self.end_block(frame)?;
+        }
+      }
+      None => {
+        return Err(TrapError {
+          message: "End: label stack underflow".to_string(),
+          vm: self.clone(),
+        });
+      }
+    }
+    
     Ok(())
   }
 

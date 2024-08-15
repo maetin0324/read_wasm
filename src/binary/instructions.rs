@@ -18,6 +18,8 @@ pub enum BlockType {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Block {
   pub block_type: BlockType,
+  pub jump_pc: usize,
+  pub is_loop: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -29,6 +31,7 @@ pub enum Instructions {
   End,
   Br(u32),
   BrIf(u32),
+  BrTable(Vec<u32>, u32),
   Return,
   Call(u32),
   Drop,
@@ -205,8 +208,35 @@ impl Instructions {
   pub fn parse(input: &[u8]) -> IResult<&[u8], Vec<Instructions>> {
     let mut instructions: Vec<Instructions> = Vec::new();
     let mut input = input;
+    let mut label_stack: Vec<Option<usize>> = Vec::new();
     loop {
       let (i, instr) = Instructions::parse_single(input)?;
+      let instr = match instr {
+        Instructions::Block(_) => {
+          label_stack.push(Some(instructions.len()));
+          instr
+        },
+        Instructions::Loop(lblock) => {
+          label_stack.push(None);
+          let nlb = Block { jump_pc: instructions.len() + 1, ..lblock };
+          Instructions::Loop(nlb)
+        },
+        Instructions::End => {
+          match label_stack.pop() {
+            Some(Some(pc)) => match &instructions[pc] {
+              Instructions::Block(block) => {
+                let block = Block { jump_pc: instructions.len(), ..block.clone() };
+                instructions[pc] = Instructions::Block(block);
+              },
+              _ => panic!("Invalid block type"),
+            },
+            Some(None) => {},
+            None => {},
+            }
+          Instructions::End
+        },
+        _ => instr,
+      };
       instructions.push(instr);
       input = i;
       if input.is_empty() {
@@ -223,11 +253,11 @@ impl Instructions {
       0x00 => Ok((input, Instructions::Unreachable)),
       0x01 => Ok((input, Instructions::Nop)),
       0x02 => {
-        let (input, block) = Block::parse(input)?;
+        let (input, block) = Block::parse(input, false)?;
         Ok((input, Instructions::Block(block)))
       },
       0x03 => {
-        let (input, block) = Block::parse(input)?;
+        let (input, block) = Block::parse(input, true)?;
         Ok((input, Instructions::Loop(block)))
       },
       0x0b => Ok((input, Instructions::End)),
@@ -239,6 +269,17 @@ impl Instructions {
         let (input, label_idx) = leb128_u32(input)?;
         Ok((input, Instructions::BrIf(label_idx)))
       },
+      0x0e => {
+        let mut labels = Vec::new();
+        let (mut input, count) = leb128_u32(input)?;
+        for _ in 0..count {
+          let (i, label_idx) = leb128_u32(input)?;
+          labels.push(label_idx);
+          input = i;
+        }
+        let (input, default) = leb128_u32(input)?;
+        Ok((input, Instructions::BrTable(labels, default)))
+      }
       0x0f => Ok((input, Instructions::Return)),
       0x10 => {
         let (input, func_idx) = leb128_u32(input)?;
@@ -569,13 +610,12 @@ impl Instructions {
 }
 
 impl Block {
-  pub fn parse(input: &[u8]) -> IResult<&[u8], Block> {
+  pub fn parse(input: &[u8], is_loop: bool) -> IResult<&[u8], Block> {
     let (input, block_type) = le_u8(input)?;
     let block_type = match block_type {
       0x40 => BlockType::Void,
       _ => BlockType::Value(ValueType::parse(block_type)),
     };
-    Ok((input, Block { block_type }))
+    Ok((input, Block { block_type , jump_pc: 0, is_loop }))
   }
 }
-

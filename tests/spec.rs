@@ -192,8 +192,19 @@ use read_wasm::binary::wasm::Wasm;
     let wasm = create_wasm_from_testsuite("tests/testsuite/block.wat");
     let mut em = ExecMachine::init(wasm, "_start", vec![Value::I64(100)]);
     let mut wasi = WasiSnapshotPreview1::new();
+    dbg!(&em);
     em.exec(&mut wasi).await.unwrap();
     assert_eq!(em.value_stack.last().unwrap(), &Value::I64(5050));
+  }
+
+  #[tokio::test]
+  async fn test_exec_block_table_wasm() {
+    let wasm = create_wasm_from_testsuite("tests/testsuite/block_table.wat");
+    let mut em = ExecMachine::init(wasm, "_start", vec![]);
+    let mut wasi = WasiSnapshotPreview1::new();
+    dbg!(&em);
+    em.exec(&mut wasi).await.unwrap();
+    assert_eq!(em.value_stack.last().unwrap(), &Value::I32(213));
   }
 
   #[tokio::test]
