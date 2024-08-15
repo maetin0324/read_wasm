@@ -88,8 +88,14 @@ impl ExecMachine {
     Ok(self)
   }
 
+  pub fn init_without_start(wasm: Wasm) -> ExecMachine {
+    let mut vm = ExecMachine::new();
+    let func_instances = FuncInstance::new(&wasm);
+    vm.store = Store::new(func_instances.clone(), &wasm);
+    vm
+  }
+
   pub async fn invoke(&mut self,wasi: &mut WasiSnapshotPreview1, entry_point: String, locals: Vec<Value>) -> Result<&ExecMachine, TrapError> {
-    self.call_stack.pop();
     self.call_stack.push(self.store.call_func_by_name(&entry_point, locals));
     self.exec(wasi).await
   }

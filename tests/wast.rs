@@ -122,7 +122,7 @@ use tokio::io::AsyncReadExt;
         Test::Module { filename, .. } => {
           let filename = format!("./target/tmp/{filename}");
           let wasm = Wasm::new(std::fs::File::open(filename).unwrap());
-          vm = Some(ExecMachine::init(wasm, "_start", vec![]));
+          vm = Some(ExecMachine::init_without_start(wasm));
         }
         Test::AssertReturn { line: _, action, expected } => {
           let action = match action {
