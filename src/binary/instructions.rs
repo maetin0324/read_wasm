@@ -34,6 +34,7 @@ pub enum Instructions {
   BrTable(Vec<u32>, u32),
   Return,
   Call(u32),
+  CallIndirect(u32, u32),
   Drop,
   Select,
   SelectValtype(Vec<ValueType>),
@@ -65,6 +66,7 @@ pub enum Instructions {
   MemoryInit(u32),
   DataDrop(u32),
   MemoryCopy,
+  MemoryFill,
   I32Const(i32),
   I64Const(i64),
   F32Const(f32),
@@ -299,6 +301,11 @@ impl Instructions {
       0x10 => {
         let (input, func_idx) = leb128_u32(input)?;
         Ok((input, Instructions::Call(func_idx)))
+      }
+      0x11 => {
+        let (input, type_idx) = leb128_u32(input)?;
+        let (input, table_idx) = leb128_u32(input)?;
+        Ok((input, Instructions::CallIndirect(type_idx, table_idx)))
       }
       0x1a => Ok((input, Instructions::Drop)),
       0x1b => Ok((input, Instructions::Select)),
@@ -611,6 +618,10 @@ impl Instructions {
           0x0a => {
             let (input, _) = tag([0x00, 0x00])(input)?;
             Ok((input, Instructions::MemoryCopy))
+          },
+          0x0b => {
+            let (input, _) = tag([0x00])(input)?;
+            Ok((input, Instructions::MemoryFill))
           },
           _ => panic!("Unknown opcode: 0xfc {:#x?}", byte),
         }

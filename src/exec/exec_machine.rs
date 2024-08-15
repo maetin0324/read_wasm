@@ -130,38 +130,6 @@ impl ExecMachine {
       Instructions::Br(idx) => {
         let idx = *idx as usize;
         self.pop_labels(&mut func, idx)?;
-
-        // let block_depth = func.label_stack.len() - 1;
-        // if block_depth < *idx as usize {
-        //   return Err(
-        //     TrapError {
-        //     message: "Br: label stack underflow".to_string(),
-        //     vm: self.clone(),
-        //   });
-        // }
-
-        // let mut end_count = block_depth - *idx as usize + 1;
-        // loop {
-        //   func.pc += 1;
-        //   let instrs = match func.instrs.get(func.pc) {
-        //     Some(i) => i.clone(),
-        //     None => {
-        //       return Err(TrapError {
-        //         message: "Br: instruction not found".to_string(),
-        //         vm: self.clone(),
-        //       });
-        //     }
-        //   };
-
-        //   if instrs == Instructions::End {
-        //     end_count -= 1;
-        //     let frame = func.label_stack.pop().unwrap();
-        //     self.end_block(frame)?;
-        //     if end_count == 0 {
-        //       break;
-        //     }
-        //   }
-        // }
       },
       Instructions::BrIf(idx) => {
         match self.value_stack.pop() {
@@ -235,6 +203,7 @@ impl ExecMachine {
             }
           }
         }
+        println!("call: {:?}", callee);
         let called_func = self.store.call_func(*idx as usize, args);
         self.call_stack.push(called_func);
         return Ok(self);

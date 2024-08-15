@@ -24,7 +24,7 @@ use read_wasm::binary::wasm::Wasm;
 
   #[test]
   fn test_parse_module_wasm() {
-    let wasm = create_wasm_from_testsuite("tests/testsuite/module.wat");
+    let wasm = create_wasm_from_testsuite("tests/mytestsuite/module.wat");
     assert!(wasm.type_section.is_none());
     assert!(wasm.function_section.is_none());
     assert!(wasm.export_section.is_none());
@@ -33,7 +33,7 @@ use read_wasm::binary::wasm::Wasm;
 
   #[test]
   fn test_parse_typesec_wasm() {
-    let wasm = create_wasm_from_testsuite("tests/testsuite/typesec.wat");
+    let wasm = create_wasm_from_testsuite("tests/mytestsuite/typesec.wat");
     assert!(wasm.type_section.is_some());
     assert!(wasm.function_section.is_none());
     assert!(wasm.export_section.is_none());
@@ -50,7 +50,7 @@ use read_wasm::binary::wasm::Wasm;
 
   #[test]
   fn test_parse_importsec_wasm() {
-    let wasm = create_wasm_from_testsuite("tests/testsuite/import.wat");
+    let wasm = create_wasm_from_testsuite("tests/mytestsuite/import.wat");
     assert!(wasm.import_section.is_some());
     assert!(wasm.function_section.is_none());
     assert!(wasm.export_section.is_none());
@@ -65,7 +65,7 @@ use read_wasm::binary::wasm::Wasm;
 
   #[test]
   fn test_parse_memorysec_wasm() {
-    let wasm = create_wasm_from_testsuite("tests/testsuite/memorysec.wat");
+    let wasm = create_wasm_from_testsuite("tests/mytestsuite/memorysec.wat");
     assert!(wasm.type_section.is_none());
     assert!(wasm.import_section.is_none());
     assert!(wasm.function_section.is_none());
@@ -80,7 +80,7 @@ use read_wasm::binary::wasm::Wasm;
 
   #[test]
   fn test_parse_datasec_wasm() {
-    let wasm = create_wasm_from_testsuite("tests/testsuite/datasec.wat");
+    let wasm = create_wasm_from_testsuite("tests/mytestsuite/datasec.wat");
     assert!(wasm.type_section.is_none());
     assert!(wasm.import_section.is_none());
     assert!(wasm.function_section.is_none());
@@ -98,7 +98,7 @@ use read_wasm::binary::wasm::Wasm;
 
   #[test]
   fn test_parse_globalsec_wasm() {
-    let wasm = create_wasm_from_testsuite("tests/testsuite/globalsec.wat");
+    let wasm = create_wasm_from_testsuite("tests/mytestsuite/globalsec.wat");
     assert!(wasm.type_section.is_none());
     assert!(wasm.import_section.is_none());
     assert!(wasm.function_section.is_none());
@@ -115,7 +115,7 @@ use read_wasm::binary::wasm::Wasm;
 
   #[test]
   fn test_parse_table_sec_wasm() {
-    let wasm = create_wasm_from_testsuite("tests/testsuite/tablesec.wat");
+    let wasm = create_wasm_from_testsuite("tests/mytestsuite/tablesec.wat");
     assert!(wasm.type_section.is_none());
     assert!(wasm.import_section.is_none());
     assert!(wasm.function_section.is_none());
@@ -133,7 +133,7 @@ use read_wasm::binary::wasm::Wasm;
 
   #[test]
   fn test_init_memory_store() {
-    let wasm = create_wasm_from_testsuite("tests/testsuite/memorysec.wat");
+    let wasm = create_wasm_from_testsuite("tests/mytestsuite/memorysec.wat");
     let store = Store::new(vec![], &wasm);
     assert_eq!(store.memories.len(), 1);
     assert_eq!(store.memories[0].memory.len(), 65536)
@@ -141,7 +141,7 @@ use read_wasm::binary::wasm::Wasm;
 
   #[test]
   fn test_init_data() {
-    let wasm = create_wasm_from_testsuite("tests/testsuite/data.wat");
+    let wasm = create_wasm_from_testsuite("tests/mytestsuite/data.wat");
     let store = Store::new(vec![], &wasm);
     assert_eq!(store.memories.len(), 1);
     assert_eq!(store.memories[0].memory.len(), 65536);
@@ -151,7 +151,7 @@ use read_wasm::binary::wasm::Wasm;
 
   #[tokio::test]
   async fn test_instantiate_with_import() {
-    let wasm = create_wasm_from_testsuite("tests/testsuite/func.wat");
+    let wasm = create_wasm_from_testsuite("tests/mytestsuite/func.wat");
     assert!(wasm.import_section.is_some());
     assert!(wasm.function_section.is_some());
     assert!(wasm.export_section.is_some());
@@ -171,7 +171,7 @@ use read_wasm::binary::wasm::Wasm;
 
   #[tokio::test]
   async fn test_import_func() {
-    let wasm = create_wasm_from_testsuite("tests/testsuite/import_func.wat");
+    let wasm = create_wasm_from_testsuite("tests/mytestsuite/import_func.wat");
     let mut em = ExecMachine::init(wasm, "_start", vec![]);
     let mut wasi = WasiSnapshotPreview1::new();
     em.exec(&mut wasi).await.unwrap();
@@ -180,7 +180,7 @@ use read_wasm::binary::wasm::Wasm;
 
   #[tokio::test]
   async fn test_exec_add_wasm() {
-    let wasm = create_wasm_from_testsuite("tests/testsuite/add.wat");
+    let wasm = create_wasm_from_testsuite("tests/mytestsuite/add.wat");
     let mut em = ExecMachine::init(wasm, "_start", vec![]);
     let mut wasi = WasiSnapshotPreview1::new();
     em.exec(&mut wasi).await.unwrap();
@@ -189,7 +189,7 @@ use read_wasm::binary::wasm::Wasm;
 
   #[tokio::test]
   async fn test_exec_block_wasm() {
-    let wasm = create_wasm_from_testsuite("tests/testsuite/block.wat");
+    let wasm = create_wasm_from_testsuite("tests/mytestsuite/block.wat");
     let mut em = ExecMachine::init(wasm, "_start", vec![Value::I64(100)]);
     let mut wasi = WasiSnapshotPreview1::new();
     dbg!(&em);
@@ -199,7 +199,7 @@ use read_wasm::binary::wasm::Wasm;
 
   #[tokio::test]
   async fn test_exec_block_table_wasm() {
-    let wasm = create_wasm_from_testsuite("tests/testsuite/block_table.wat");
+    let wasm = create_wasm_from_testsuite("tests/mytestsuite/block_table.wat");
     let mut em = ExecMachine::init(wasm, "_start", vec![]);
     let mut wasi = WasiSnapshotPreview1::new();
     dbg!(&em);
@@ -209,7 +209,7 @@ use read_wasm::binary::wasm::Wasm;
 
   #[tokio::test]
   async fn test_i32_store_wasm() {
-    let wasm = create_wasm_from_testsuite("tests/testsuite/i32store.wat");
+    let wasm = create_wasm_from_testsuite("tests/mytestsuite/i32store.wat");
     let mut em = ExecMachine::init(wasm, "i32_store",vec![]);
     let mut wasi = WasiSnapshotPreview1::new();
     em.exec(&mut wasi).await.unwrap();
@@ -219,7 +219,7 @@ use read_wasm::binary::wasm::Wasm;
 
   #[tokio::test]
   async fn test_i64_store_wasm() {
-    let wasm = create_wasm_from_testsuite("tests/testsuite/i64store.wat");
+    let wasm = create_wasm_from_testsuite("tests/mytestsuite/i64store.wat");
     let mut em = ExecMachine::init(wasm, "i64_store",vec![]);
     let mut wasi = WasiSnapshotPreview1::new();
     em.exec(&mut wasi).await.unwrap();
@@ -229,7 +229,7 @@ use read_wasm::binary::wasm::Wasm;
 
   #[tokio::test]
   async fn test_global_wasm() {
-    let wasm = create_wasm_from_testsuite("tests/testsuite/global.wat");
+    let wasm = create_wasm_from_testsuite("tests/mytestsuite/global.wat");
     let mut em = ExecMachine::init(wasm, "_start", vec![]);
     let mut wasi = WasiSnapshotPreview1::new();
     em.exec(&mut wasi).await.unwrap();
@@ -239,7 +239,7 @@ use read_wasm::binary::wasm::Wasm;
 
   #[tokio::test]
   async fn test_hello_world_wasm() {
-    let wasm = create_wasm_from_testsuite("tests/testsuite/hello_world.wat");
+    let wasm = create_wasm_from_testsuite("tests/mytestsuite/hello_world.wat");
     let mut em = ExecMachine::init(wasm, "_start", vec![]);
     let mut wasi = WasiSnapshotPreview1::new();
     em.exec(&mut wasi).await.unwrap();
