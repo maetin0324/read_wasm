@@ -246,6 +246,21 @@ impl Instructions {
     Ok((input, instructions))
   }
 
+  pub fn parse_init(input: &[u8]) -> IResult<&[u8], Vec<Instructions>> {
+    let mut instrs = Vec::new();
+    let mut input = input;
+    loop {
+      let (i, instr) = Instructions::parse_single(input)?;
+      input = i;
+      if &instr == &Instructions::End {
+        instrs.push(instr);
+        break;
+      }
+      instrs.push(instr);
+    }
+    Ok((input, instrs))
+  }
+
   fn parse_single(input: &[u8]) -> IResult<&[u8], Instructions> {
     let (input, opcode) = le_u8(input)?;
 

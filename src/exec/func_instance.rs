@@ -1,6 +1,7 @@
 use core::panic;
 use serde::{Deserialize, Serialize};
 
+use crate::binary::export_sec::ExportDesc;
 use crate::binary::import_sec::ImportDesc;
 use crate::binary::instructions::Instructions;
 use crate::binary::value_type::ValueType;
@@ -70,6 +71,9 @@ impl FuncInstance {
           let _ = code.locals.iter().map(|l| local_types.extend(l.to_value_type_vec()));
 
           let name: Option<String> = exports.iter().find_map(|e| {
+            if !(e.desc == ExportDesc::Func) {
+              return None;
+            }
             if e.func_idx == (i + import_func_count) as u32 {
               Some(e.name.clone())
             } else {

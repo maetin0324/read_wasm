@@ -20,7 +20,7 @@ impl GlobalVar {
       let valtype = ValueType::parse(valtype[0]);
       let (rest, mutability) = take(1usize)(rest)?;
       let mutability = mutability[0];
-      let (rest, init) = Instructions::parse(rest)?;
+      let (rest, init) = Instructions::parse_init(rest).unwrap();
 
       globals.push(GlobalVar { valtype, mutability: mutability == 1, init });
       input = rest;
