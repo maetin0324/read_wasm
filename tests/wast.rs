@@ -152,15 +152,41 @@ use tokio::io::AsyncReadExt;
             }
           }
         }
+        Test::Action { line: _, action, expected: _ } => {
+          vm.as_mut().unwrap().value_stack.clear();
+          match action {
+            Action::Invoke { field, args } => {
+              let args = args.into_iter().map(|x| x.into()).collect();
+              let field = field.to_owned();
+              vm.as_mut().unwrap().invoke(&mut wasi, field, args).await.unwrap();
+              vm.as_mut().unwrap().value_stack.clone()
+            }
+          };
+        }
         _ => {},
       }
     }
   }
 
-  // #[tokio::test]
-  // async fn test_i32() {
-  //   test_suite("i32.wast").await;
-  // }
+  #[tokio::test]
+  async fn test_block() {
+    test_suite("block.wast").await;
+  }
+
+  #[tokio::test]
+  async fn test_local_get() {
+    test_suite("local_get.wast").await;
+  }
+
+  #[tokio::test]
+  async fn test_i32() {
+    test_suite("i32.wast").await;
+  }
+
+  #[tokio::test]
+  async fn test_i64() {
+    test_suite("i64.wast").await;
+  }
 
   // #[tokio::test]
   // async fn test_memory() {

@@ -51,9 +51,11 @@ async fn main() {
       let file = File::open(filename).unwrap();
       let wasm = Wasm::new(BufReader::new(file));
 
+
       let locals = Value::parse_from_i64_vec(locals);
 
       let mut machine = ExecMachine::init(wasm, &entry_point, locals);
+      dbg!(&machine.store.funcs);
       let mut wasi = WasiSnapshotPreview1::new();
       match machine.exec(&mut wasi).await {
         Ok(_) => { println!("return {:?}", machine.value_stack.last()); },

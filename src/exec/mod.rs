@@ -6,3 +6,4 @@ pub mod frame;
 pub mod store;
 pub mod import;
 pub mod wasi;
+pub mod op;

@@ -2,7 +2,7 @@ use core::panic;
 use serde::{Deserialize, Serialize};
 
 use nom::{
-  bytes::complete::tag, number::complete::le_u8, IResult
+  bytes::complete::{tag, take}, number::complete::le_u8, IResult
 };
 
 use nom_leb128::{leb128_i32, leb128_i64, leb128_u32};
@@ -28,6 +28,8 @@ pub enum Instructions {
   Nop,
   Block(Block),
   Loop(Block),
+  If(Block),
+  Else,
   End,
   Br(u32),
   BrIf(u32),
@@ -223,12 +225,34 @@ impl Instructions {
           let nlb = Block { jump_pc: instructions.len() + 1, ..lblock };
           Instructions::Loop(nlb)
         },
+        Instructions::If(_) => {
+          label_stack.push(Some(instructions.len()));
+          instr
+        },
+        Instructions::Else => {
+          match label_stack.pop() {
+            Some(Some(pc)) => match &instructions[pc] {
+              Instructions::If(block) => {
+                let block = Block { jump_pc: instructions.len(), ..block.clone() };
+                instructions[pc] = Instructions::If(block);
+              },
+              _ => panic!("Invalid block type"),
+            },
+            _ => panic!("Invalid block type"),
+          }
+          label_stack.push(None);
+          Instructions::Else
+        },
         Instructions::End => {
           match label_stack.pop() {
             Some(Some(pc)) => match &instructions[pc] {
               Instructions::Block(block) => {
                 let block = Block { jump_pc: instructions.len(), ..block.clone() };
                 instructions[pc] = Instructions::Block(block);
+              },
+              Instructions::If(block) => {
+                let block = Block { jump_pc: instructions.len(), ..block.clone() };
+                instructions[pc] = Instructions::If(block);
               },
               _ => panic!("Invalid block type"),
             },
@@ -277,6 +301,11 @@ impl Instructions {
         let (input, block) = Block::parse(input, true)?;
         Ok((input, Instructions::Loop(block)))
       },
+      0x04 => {
+        let (input, block) = Block::parse(input, false)?;
+        Ok((input, Instructions::If(block)))
+      },
+      0x05 => Ok((input, Instructions::Else)),
       0x0b => Ok((input, Instructions::End)),
       0x0c => {
         let (input, label_idx) = leb128_u32(input)?;
@@ -466,12 +495,14 @@ impl Instructions {
         Ok((input, Instructions::I64Const(val)))
       },
       0x43 => {
-        let (input, val) = leb128_i32(input)?;
-        Ok((input, Instructions::F32Const(val as f32)))
+        let (input, val) = take(4_usize)(input)?;
+        let val = f32::from_le_bytes([val[0], val[1], val[2], val[3]]);
+        Ok((input, Instructions::F32Const(val)))
       },
       0x44 => {
-        let (input, val) = leb128_i64(input)?;
-        Ok((input, Instructions::F64Const(val as f64)))
+        let (input, val) = take(8_usize)(input)?;
+        let val = f64::from_le_bytes([val[0], val[1], val[2], val[3], val[4], val[5], val[6], val[7]]);
+        Ok((input, Instructions::F64Const(val)))
       },
       0x45 => Ok((input, Instructions::I32Eqz)),
       0x46 => Ok((input, Instructions::I32Eq)),

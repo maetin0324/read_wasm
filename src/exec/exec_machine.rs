@@ -1,3 +1,5 @@
+use core::panic;
+
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
@@ -105,8 +107,12 @@ impl ExecMachine {
       return Ok(self);
     };
 
+    println!("call_stack: {}", self.call_stack.len());
+    // if self.call_stack.len() == 6 {
+
     println!("instr: {:?}, pc: {}, stack: {:?}, locals: {:?}", instr, func.pc, self.value_stack, func.locals);
-    // println!("label_stack: {:#?}", func.label_stack);
+    println!("label_stack: {:#?}", func.label_stack);
+    // }
     match instr {
       Instructions::Nop => {},
       Instructions::Unreachable => {
@@ -124,6 +130,39 @@ impl ExecMachine {
         let frame = BlockFrame::new(self.value_stack.clone(), block.clone(), true);
         self.value_stack.clear();
         func.label_stack.push(frame);
+      },
+      Instructions::If(block) => {
+        let val = self.value_stack.pop().unwrap();
+        match val {
+          Value::I32(v) => {
+            if v != 0 {
+              let frame = BlockFrame::new(self.value_stack.clone(), block.clone(), false);
+              self.value_stack.clear();
+              func.label_stack.push(frame);
+            } else {
+              let frame = BlockFrame::new(self.value_stack.clone(), block.clone(), false);
+              self.value_stack.clear();
+              func.label_stack.push(frame);
+              func.pc = block.jump_pc;
+            }
+          },
+          _ => {
+            return Err(TrapError {
+              message: "If: invalid value type".to_string(),
+              vm: self.clone(),
+            });
+          }
+        }
+      },
+      Instructions::Else => {
+        loop {
+          func.pc += 1;
+          let instr = func.instrs.get(func.pc).unwrap();
+          if instr == &Instructions::End {
+            func.label_stack.pop();
+            break;
+          }
+        }
       },
       Instructions::End => {
         let frame = match func.label_stack.pop() {
@@ -178,22 +217,11 @@ impl ExecMachine {
         self.pop_labels(&mut func, idx as usize)?;
       },
       Instructions::Return => {
-        let frame = match func.label_stack.pop() {
-          Some(f) => f,
-          None => {
-            return Err(TrapError {
-              message: "Return: label stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.end_block(frame)?;
         return Ok(self);
       },
       Instructions::Call(idx) => {
         // self.serialize_vm();
         let callee = self.store.get_func(*idx as usize);
-        dbg!(idx);
         let mut args = Vec::new();
         for pty in callee.param_types().iter() {
           match self.value_stack.pop() {
@@ -726,30 +754,42 @@ impl ExecMachine {
       Instructions::F64Const(val) => {
         self.value_stack.push(Value::F64(*val));
       },
-      Instructions::I32Eqz => {
-        let val = match self.value_stack.pop() {
-          Some(v) => v,
-          None => {
+      Instructions::I32Eqz
+      | Instructions::I64Eqz => {
+        let val = self.value_stack.pop().unwrap();
+        let ret = match crate::exec::op::exec_itestop(instr, val) {
+          Ok(v) => v,
+          Err(e) => {
             return Err(TrapError {
-              message: "I32Eqz: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match val {
-          Value::I32(v) => Value::I32(if v == 0 { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I32Eqz".to_string(),
+              message: format!("I32Eqz: {}", e),
               vm: self.clone(),
             });
           }
         };
         self.value_stack.push(ret);
       }
-      Instructions::I32Eq => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
+      Instructions::I32Eq 
+      | Instructions::I32Ne
+      | Instructions::I32LtS
+      | Instructions::I32LtU
+      | Instructions::I32GtS
+      | Instructions::I32GtU
+      | Instructions::I32LeS
+      | Instructions::I32LeU
+      | Instructions::I32GeS
+      | Instructions::I32GeU
+      | Instructions::I64Eq
+      | Instructions::I64Ne
+      | Instructions::I64LtS
+      | Instructions::I64LtU
+      | Instructions::I64GtS
+      | Instructions::I64GtU
+      | Instructions::I64LeS
+      | Instructions::I64LeU
+      | Instructions::I64GeS
+      | Instructions::I64GeU => {
+        let (b, a) = match (self.value_stack.pop(), self.value_stack.pop()) {
+          (Some(b), Some(a)) => (a, b),
           _ => {
             return Err(TrapError {
               message: "I32Eq: value stack underflow".to_string(),
@@ -757,440 +797,31 @@ impl ExecMachine {
             });
           }
         };
-        let ret = match (a, b) {
-          (Value::I32(a), Value::I32(b)) => Value::I32(if a == b { 1 } else { 0 }),
-          _ => {
+        let ret = match crate::exec::op::exec_irelop(instr, b, a) {
+          Ok(v) => v,
+          Err(e) => {
             return Err(TrapError {
-              message: "Invalid type for I32Eq".to_string(),
+              message: format!("I32Eq: {}", e),
               vm: self.clone(),
             });
           }
         };
         self.value_stack.push(ret);
       },
-      Instructions::I32Ne => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I32Ne: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I32(a), Value::I32(b)) => Value::I32(if a != b { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I32Ne".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I32LtS => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I32LtS: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I32(a), Value::I32(b)) => Value::I32(if a < b { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I32LtS".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I32LtU => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I32LtU: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I32(a), Value::I32(b)) => Value::I32(if (a as u32) < (b as u32) { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I32LtU".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I32GtS => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I32GtS: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I32(a), Value::I32(b)) => Value::I32(if a > b { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I32GtS".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I32GtU => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I32GtU: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I32(a), Value::I32(b)) => Value::I32(if (a as u32) > (b as u32) { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I32GtU".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I32LeS => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I32LeS: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I32(a), Value::I32(b)) => Value::I32(if a <= b { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I32LeS".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I32LeU => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I32LeU: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I32(a), Value::I32(b)) => Value::I32(if (a as u32) <= (b as u32) { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I32LeU".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I32GeS => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I32GeS: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I32(a), Value::I32(b)) => Value::I32(if a >= b { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I32GeS".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I32GeU => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I32GeU: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I32(a), Value::I32(b)) => Value::I32(if (a as u32) >= (b as u32) { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I32GeU".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64Eqz => {
-        let val = match self.value_stack.pop() {
-          Some(v) => v,
-          None => {
-            return Err(TrapError {
-              message: "I64Eqz: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match val {
-          Value::I64(v) => Value::I32(if v == 0 { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64Eqz".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      }
-      Instructions::I64Eq => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I64Eq: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I64(a), Value::I64(b)) => Value::I32(if a == b { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64Eq".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64Ne => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I64Ne: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I64(a), Value::I64(b)) => Value::I32(if a != b { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64Ne".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64LtS => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I64LtS: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I64(a), Value::I64(b)) => Value::I32(if a < b { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64LtS".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64LtU => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I64LtU: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I64(a), Value::I64(b)) => Value::I32(if (a as u64) < (b as u64) { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64LtU".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64GtS => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I64GtS: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I64(a), Value::I64(b)) => Value::I32(if a > b { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64GtS".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64GtU => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I64GtU: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I64(a), Value::I64(b)) => Value::I32(if (a as u64) > (b as u64) { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64GtU".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64LeS => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I64LeS: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I64(a), Value::I64(b)) => Value::I32(if a <= b { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64LeS".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64LeU => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I64LeU: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I64(a), Value::I64(b)) => Value::I32(if (a as u64) <= (b as u64) { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64LeU".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64GeS => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I64GeS: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I64(a), Value::I64(b)) => Value::I32(if a >= b { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64GeS".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64GeU => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I64GeU: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I64(a), Value::I64(b)) => Value::I32(if (a as u64) >= (b as u64) { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64GeU".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::F32Eq => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
+      Instructions::F32Eq
+      | Instructions::F32Ne
+      | Instructions::F32Lt
+      | Instructions::F32Gt
+      | Instructions::F32Le
+      | Instructions::F32Ge
+      | Instructions::F64Eq
+      | Instructions::F64Ne
+      | Instructions::F64Lt
+      | Instructions::F64Gt
+      | Instructions::F64Le
+      | Instructions::F64Ge => {
+        let (b, a) = match (self.value_stack.pop(), self.value_stack.pop()) {
+          (Some(b), Some(a)) => (b, a),
           _ => {
             return Err(TrapError {
               message: "F32Eq: value stack underflow".to_string(),
@@ -1198,270 +829,23 @@ impl ExecMachine {
             });
           }
         };
-        let ret = match (a, b) {
-          (Value::F32(a), Value::F32(b)) => Value::I32(if a == b { 1 } else { 0 }),
-          _ => {
+        let ret = match crate::exec::op::exec_frelop(instr, b, a) {
+          Ok(v) => v,
+          Err(e) => {
             return Err(TrapError {
-              message: "Invalid type for F32Eq".to_string(),
+              message: format!("F32Eq: {}", e),
               vm: self.clone(),
             });
           }
         };
         self.value_stack.push(ret);
       },
-      Instructions::F32Ne => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "F32Ne: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::F32(a), Value::F32(b)) => Value::I32(if a != b { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for F32Ne".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::F32Lt => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "F32Lt: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::F32(a), Value::F32(b)) => Value::I32(if a < b { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for F32Lt".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::F32Gt => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "F32Gt: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::F32(a), Value::F32(b)) => Value::I32(if a > b { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for F32Gt".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::F32Le => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "F32Le: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::F32(a), Value::F32(b)) => Value::I32(if a <= b { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for F32Le".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::F32Ge => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "F32Ge: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::F32(a), Value::F32(b)) => Value::I32(if a >= b { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for F32Ge".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::F64Eq => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "F64Eq: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::F64(a), Value::F64(b)) => Value::I32(if a == b { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for F64Eq".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::F64Ne => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "F64Ne: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::F64(a), Value::F64(b)) => Value::I32(if a != b { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for F64Ne".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::F64Lt => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "F64Lt: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::F64(a), Value::F64(b)) => Value::I32(if a < b { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for F64Lt".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::F64Gt => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "F64Gt: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::F64(a), Value::F64(b)) => Value::I32(if a > b { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for F64Gt".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::F64Le => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "F64Le: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::F64(a), Value::F64(b)) => Value::I32(if a <= b { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for F64Le".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::F64Ge => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "F64Ge: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::F64(a), Value::F64(b)) => Value::I32(if a >= b { 1 } else { 0 }),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for F64Ge".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I32Clz => {
-        let val = match self.value_stack.pop() {
-          Some(v) => v,
-          None => {
-            return Err(TrapError {
-              message: "I32Clz: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match val {
-          Value::I32(v) => Value::I32(v.leading_zeros() as i32),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I32Clz".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I32Ctz => {
+      Instructions::I32Clz
+      | Instructions::I32Ctz
+      | Instructions::I32Popcnt
+      | Instructions::I64Clz
+      | Instructions::I64Ctz
+      | Instructions::I64Popcnt => {
         let val = match self.value_stack.pop() {
           Some(v) => v,
           None => {
@@ -1471,41 +855,49 @@ impl ExecMachine {
             });
           }
         };
-        let ret = match val {
-          Value::I32(v) => Value::I32(v.trailing_zeros() as i32),
-          _ => {
+        let ret = match crate::exec::op::exec_iuop(instr, val) {
+          Ok(v) => v,
+          Err(e) => {
             return Err(TrapError {
-              message: "Invalid type for I32Ctz".to_string(),
+              message: format!("I32Ctz: {}", e),
               vm: self.clone(),
             });
           }
         };
         self.value_stack.push(ret);
       },
-      Instructions::I32Popcnt => {
-        let val = match self.value_stack.pop() {
-          Some(v) => v,
-          None => {
-            return Err(TrapError {
-              message: "I32Popcnt: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match val {
-          Value::I32(v) => Value::I32(v.count_ones() as i32),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I32Popcnt".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I32Add => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
+      Instructions::I32Add
+      | Instructions::I32Sub
+      | Instructions::I32Mul
+      | Instructions::I32DivS
+      | Instructions::I32DivU
+      | Instructions::I32RemS
+      | Instructions::I32RemU
+      | Instructions::I32And
+      | Instructions::I32Or
+      | Instructions::I32Xor
+      | Instructions::I32Shl
+      | Instructions::I32ShrS
+      | Instructions::I32ShrU
+      | Instructions::I32Rotl
+      | Instructions::I32Rotr
+      | Instructions::I64Add
+      | Instructions::I64Sub
+      | Instructions::I64Mul
+      | Instructions::I64DivS
+      | Instructions::I64DivU
+      | Instructions::I64RemS
+      | Instructions::I64RemU
+      | Instructions::I64And
+      | Instructions::I64Or
+      | Instructions::I64Xor
+      | Instructions::I64Shl
+      | Instructions::I64ShrS
+      | Instructions::I64ShrU
+      | Instructions::I64Rotl
+      | Instructions::I64Rotr => {
+        let (b, a) = match (self.value_stack.pop(), self.value_stack.pop()) {
+          (Some(b), Some(a)) => (b, a),
           _ => {
             return Err(TrapError {
               message: "I32Add: value stack underflow".to_string(),
@@ -1513,691 +905,11 @@ impl ExecMachine {
             });
           }
         };
-        let ret = match (a, b) {
-          (Value::I32(a), Value::I32(b)) => Value::I32(a + b),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I32Add".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I32Sub => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I32Sub: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I32(a), Value::I32(b)) => Value::I32(b - a),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I32Sub".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I32Mul => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I32Mul: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I32(a), Value::I32(b)) => Value::I32(a * b),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I32Mul".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I32DivS => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I32DivS: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I32(0), Value::I32(_)) => Value::I32(0),
-          (Value::I32(a), Value::I32(b)) => Value::I32(a / b),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I32DivS".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I32DivU => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I32DivU: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I32(0), Value::I32(_)) => Value::I32(0),
-          (Value::I32(a), Value::I32(b)) => Value::I32((a as u32 / b as u32) as i32),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I32DivU".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I32RemS => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I32RemS: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I32(0), Value::I32(_)) => Value::I32(0),
-          (Value::I32(a), Value::I32(b)) => Value::I32(a % b),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I32RemS".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I32RemU => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I32RemU: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I32(0), Value::I32(_)) => Value::I32(0),
-          (Value::I32(a), Value::I32(b)) => Value::I32((a as u32 % b as u32) as i32),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I32RemU".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I32And => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I32And: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I32(a), Value::I32(b)) => Value::I32(a & b),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I32And".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I32Or => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I32Or: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I32(a), Value::I32(b)) => Value::I32(a | b),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I32Or".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I32Xor => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I32Xor: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I32(a), Value::I32(b)) => Value::I32(a ^ b),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I32Xor".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I32Shl => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I32Shl: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I32(a), Value::I32(b)) => Value::I32(a << (b & 0x1F)),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I32Shl".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I32ShrS => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I32ShrS: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I32(a), Value::I32(b)) => Value::I32(a >> (b & 0x1F)),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I32ShrS".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I32ShrU => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I32ShrU: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I32(a), Value::I32(b)) => Value::I32(((a as u32).wrapping_shl(b as u32)) as i32),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I32ShrU".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I32Rotl => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I32Rotl: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I32(a), Value::I32(b)) => Value::I32(a.rotate_left(b as u32)),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I32Rotl".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I32Rotr => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I32Rotr: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I32(a), Value::I32(b)) => Value::I32(a.rotate_right(b as u32)),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I32Rotr".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64Clz => {
-        let val = match self.value_stack.pop() {
-          Some(v) => v,
-          None => {
-            return Err(TrapError {
-              message: "I64Clz: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match val {
-          Value::I64(v) => Value::I64(v.leading_zeros() as i64),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64Clz".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64Ctz => {
-        let val = match self.value_stack.pop() {
-          Some(v) => v,
-          None => {
-            return Err(TrapError {
-              message: "I64Ctz: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match val {
-          Value::I64(v) => Value::I64(v.trailing_zeros() as i64),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64Ctz".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64Popcnt => {
-        let val = match self.value_stack.pop() {
-          Some(v) => v,
-          None => {
-            return Err(TrapError {
-              message: "I64Popcnt: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match val {
-          Value::I64(v) => Value::I64(v.count_ones() as i64),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64Popcnt".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64Add => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I64Add: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I64(a), Value::I64(b)) => Value::I64(a + b),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64Add".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64Sub => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I64Sub: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I64(a), Value::I64(b)) => Value::I64(b - a),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64Sub".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64Mul => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I64Mul: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I64(a), Value::I64(b)) => Value::I64(a * b),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64Mul".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64DivS => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I64DivS: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I64(0), Value::I64(_)) => Value::I64(0),
-          (Value::I64(a), Value::I64(b)) => Value::I64(a / b),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64DivS".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64DivU => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I64DivU: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I64(0), Value::I64(_)) => Value::I64(0),
-          (Value::I64(a), Value::I64(b)) => Value::I64(a / b),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64DivU".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64RemS => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I64RemS: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I64(0), Value::I64(_)) => Value::I64(0),
-          (Value::I64(a), Value::I64(b)) => Value::I64(a % b),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64RemS".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64RemU => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I64RemU: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I64(0), Value::I64(_)) => Value::I64(0),
-          (Value::I64(a), Value::I64(b)) => Value::I64(a % b),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64RemU".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64And => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I64And: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I64(a), Value::I64(b)) => Value::I64(a & b),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64And".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64Or => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I64Or: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I64(a), Value::I64(b)) => Value::I64(a | b),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64Or".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64Xor => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I64Xor: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I64(a), Value::I64(b)) => Value::I64(a ^ b),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64Xor".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64Shl => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I64Shl: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I64(a), Value::I64(b)) => Value::I64(a << (b & 0x3F)),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64Shl".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64ShrS => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I64ShrS: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I64(a), Value::I64(b)) => Value::I64(a >> (b & 0x3F)),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64ShrS".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64ShrU => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I64ShrU: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I64(a), Value::I64(b)) => Value::I64(a >> (b & 0x3F)),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64ShrU".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64Rotl => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I64Rotl: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I64(a), Value::I64(b)) => Value::I64(a.rotate_left(b as u32)),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64Rotl".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        self.value_stack.push(ret);
-      },
-      Instructions::I64Rotr => {
-        let (a, b) = match (self.value_stack.pop(), self.value_stack.pop()) {
-          (Some(a), Some(b)) => (a, b),
-          _ => {
-            return Err(TrapError {
-              message: "I64Rotr: value stack underflow".to_string(),
-              vm: self.clone(),
-            });
-          }
-        };
-        let ret = match (a, b) {
-          (Value::I64(a), Value::I64(b)) => Value::I64(a.rotate_right(b as u32)),
-          _ => {
-            return Err(TrapError {
-              message: "Invalid type for I64Rotr".to_string(),
+        let ret = match crate::exec::op::exec_ibinop(instr, a, b) {
+          Ok(v) => v,
+          Err(e) => {
+            return Err(TrapError {
+              message: format!("I32Add: {}", e),
               vm: self.clone(),
             });
           }
@@ -3535,6 +2247,7 @@ impl ExecMachine {
         }
       }
     }
+
 
     match func.label_stack.pop() {
       Some(frame) => {
